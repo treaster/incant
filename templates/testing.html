@@ -1,0 +1,11 @@
++++ SCHEMA +++
+Foo
+Bar
+Baz
++++ /SCHEMA +++
+
+AAA
+{{ .Foo }}
+{{ RenderMarkdown .Bar }}
+{{ .Baz }}
+
