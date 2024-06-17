@@ -1,0 +1,3 @@
+TemplatesRoot = "./templates"
+ContentRoot = "./content"
+OutputRoot = "./output"

@@ -1,0 +1,5 @@
+template = "templates/testing.html"
+
+Foo = "START"
+Bar = "AAA *XXX* ZZZ"
+Baz = "END"
