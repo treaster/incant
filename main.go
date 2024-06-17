@@ -26,7 +26,7 @@ func main() {
 		return
 	}
 
-	tmpl, err := LoadTemplates(config)
+	tmpl, err := LoadTemplates(filepath.Dir(configPath)+"/", config)
 
 	hasError := false
 	contents := FindFiles(config.ContentRoot)
@@ -56,7 +56,24 @@ func LoadConfig(configPath string) (Config, error) {
 	}
 
 	_, err := toml.DecodeFile(configPath, &config)
+	if err != nil {
+		return config, err
+	}
+
+	configDir := filepath.Dir(configPath)
+	RewritePath(configDir, &config.TemplatesRoot)
+	RewritePath(configDir, &config.ContentRoot)
+	RewritePath(configDir, &config.OutputRoot)
+
 	return config, err
+}
+
+func RewritePath(configDir string, relativePath *string) {
+	if filepath.IsAbs(*relativePath) {
+		panic(fmt.Sprintf("Paths in config file must be relative to the config file's directory. Absolute paths are not supported."))
+	}
+	*relativePath = filepath.Join(configDir, *relativePath)
+	fmt.Println(*relativePath)
 }
 
 func FindFiles(fileRoot string) []string {
@@ -79,7 +96,7 @@ func FindFiles(fileRoot string) []string {
 	return files
 }
 
-func LoadTemplates(config Config) (*template.Template, error) {
+func LoadTemplates(configPath string, config Config) (*template.Template, error) {
 	tmpl := template.
 		New("ssg").
 		Funcs(template.FuncMap{
@@ -97,7 +114,11 @@ func LoadTemplates(config Config) (*template.Template, error) {
 	for _, oneTmpl := range templates {
 		tmplContents, err := os.ReadFile(oneTmpl)
 		if err == nil {
-			_, err = tmpl.New(oneTmpl).Parse(string(tmplContents))
+			tmplName, isOk := strings.CutPrefix(oneTmpl, configPath)
+			if !isOk {
+				panic(fmt.Sprintf("Error removing prefix %q on %q", configPath, oneTmpl))
+			}
+			_, err = tmpl.New(tmplName).Parse(string(tmplContents))
 		}
 
 		if err != nil {
@@ -110,26 +131,28 @@ func LoadTemplates(config Config) (*template.Template, error) {
 		return nil, fmt.Errorf("encountered errors while parsing templates")
 	}
 
-	fmt.Println(tmpl.DefinedTemplates())
+	fmt.Println("Loaded templates:", tmpl.DefinedTemplates())
 	return tmpl, nil
 }
 
 func ProcessContent(config Config, tmpl *template.Template, contentPath string) error {
-	var content map[string]any
+	var content struct {
+		Config struct {
+			Template string
+		}
+		Data map[string]any
+	}
+
 	_, err := toml.DecodeFile(contentPath, &content)
 	if err != nil {
 		return err
 	}
 
-	templateAny, hasTemplate := content["template"]
-	if !hasTemplate {
-		return fmt.Errorf("content file must contain key 'template', which defines which template file should be used.")
+	templateName := content.Config.Template
+	if templateName == "" {
+		return fmt.Errorf("content file must contain key 'config.template', which defines which template file should be used.")
 	}
 
-	templateName, isString := templateAny.(string)
-	if !isString {
-		return fmt.Errorf("template key must be a string.")
-	}
 	var output bytes.Buffer
 	oneTmpl := tmpl.Lookup(templateName)
 	err = oneTmpl.Execute(&output, content)
@@ -137,10 +160,20 @@ func ProcessContent(config Config, tmpl *template.Template, contentPath string) 
 		return err
 	}
 
+	tmplExt := filepath.Ext(templateName)
+
 	relative, isOk := strings.CutPrefix(filepath.Clean(contentPath), filepath.Clean(config.ContentRoot))
 	if !isOk {
 		panic("Whaa?")
 	}
+
+	contentExt := filepath.Ext(relative)
+	relativeNoExt, isOk := strings.CutSuffix(relative, contentExt)
+	if !isOk {
+		panic("Whaa?")
+	}
+
+	relative = relativeNoExt + tmplExt
 
 	outputPath := filepath.Join(config.OutputRoot, relative)
 	outputDir := filepath.Dir(outputPath)

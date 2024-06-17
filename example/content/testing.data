@@ -1,0 +1,11 @@
+[config]
+template = "templates/testing.html"
+
+[data]
+title = "SSG IS ALIVE!"
+foo = "START"
+bar = """
+    AAA *XXX* ZZZ
+    """
+
+baz = "END"

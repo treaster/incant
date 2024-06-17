@@ -1,5 +1,10 @@
-AAA
-{{ .Foo }}
-{{ RenderMarkdown .Bar }}
-{{ .Baz }}
-
+<html>
+    <head>
+        <title>{{ .Data.title }}</title>
+    </head>
+    <body>
+        {{ .Data.foo }}
+        {{ RenderMarkdown .Data.bar }}
+        {{ .Data.baz }}
+    </body>
+</html>
