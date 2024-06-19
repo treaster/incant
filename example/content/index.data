@@ -1,0 +1,8 @@
+[config]
+template = "templates/testing_index.html"
+
+[subdatas]
+patterns = ["content/*.data"]
+
+[data]
+title = "OOPS"

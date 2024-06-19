@@ -14,38 +14,61 @@ import (
 	"github.com/yuin/goldmark"
 )
 
+type Config struct {
+	TemplatesRoot string
+	ContentRoot   string
+	OutputRoot    string
+}
+
+type Content struct {
+	Config struct {
+		Template string
+	}
+	Subdatas struct {
+		Patterns []string
+		Matches  []*Content
+	}
+	Data map[string]any
+}
+
 func main() {
 	var configPath string
 	flag.StringVar(&configPath, "config", "", "TOML file defining static site params")
 
 	flag.Parse()
 
+	siteRoot := filepath.Dir(configPath) + "/"
 	config, err := LoadConfig(configPath)
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err.Error())
 		return
 	}
 
-	tmpl, err := LoadTemplates(filepath.Dir(configPath)+"/", config)
+	allContents := map[string]*Content{}
+
+	tmpl, err := LoadTemplates(siteRoot, config)
+	if err != nil {
+		fmt.Printf("ERROR: error loading template files: %s\n", err.Error())
+		return
+	}
+
+	err = LoadContent(siteRoot, config, allContents)
+	if err != nil {
+		fmt.Printf("ERROR: error loading content files: %s\n", err.Error())
+		return
+	}
 
 	hasError := false
-	contents := FindFiles(config.ContentRoot)
-	for _, file := range contents {
-		err := ProcessContent(config, tmpl, file)
+	for contentPath, content := range allContents {
+		err := ProcessContent(siteRoot, config, tmpl, content, contentPath)
 		if err != nil {
 			hasError = true
-			fmt.Printf("ERROR: error processing content %q: %s\n", file, err.Error())
+			fmt.Printf("ERROR: error processing content %q: %s\n", contentPath, err.Error())
 		}
 	}
 	if hasError {
 		return
 	}
-}
-
-type Config struct {
-	TemplatesRoot string
-	ContentRoot   string
-	OutputRoot    string
 }
 
 func LoadConfig(configPath string) (Config, error) {
@@ -56,24 +79,7 @@ func LoadConfig(configPath string) (Config, error) {
 	}
 
 	_, err := toml.DecodeFile(configPath, &config)
-	if err != nil {
-		return config, err
-	}
-
-	configDir := filepath.Dir(configPath)
-	RewritePath(configDir, &config.TemplatesRoot)
-	RewritePath(configDir, &config.ContentRoot)
-	RewritePath(configDir, &config.OutputRoot)
-
 	return config, err
-}
-
-func RewritePath(configDir string, relativePath *string) {
-	if filepath.IsAbs(*relativePath) {
-		panic(fmt.Sprintf("Paths in config file must be relative to the config file's directory. Absolute paths are not supported."))
-	}
-	*relativePath = filepath.Join(configDir, *relativePath)
-	fmt.Println(*relativePath)
 }
 
 func FindFiles(fileRoot string) []string {
@@ -96,15 +102,16 @@ func FindFiles(fileRoot string) []string {
 	return files
 }
 
-func LoadTemplates(configPath string, config Config) (*template.Template, error) {
+func LoadTemplates(siteRoot string, config Config) (*template.Template, error) {
 	tmpl := template.
 		New("ssg").
 		Funcs(template.FuncMap{
 			"RenderMarkdown": RenderMarkdown,
+			//"PageItems":      GetPageItems,
 		}).
 		Option("missingkey=error")
 
-	templates := FindFiles(config.TemplatesRoot)
+	templates := FindFiles(filepath.Join(siteRoot, config.TemplatesRoot))
 	if len(templates) == 0 {
 		return nil, fmt.Errorf("no templates found in templates root %q\n", config.TemplatesRoot)
 	}
@@ -114,9 +121,9 @@ func LoadTemplates(configPath string, config Config) (*template.Template, error)
 	for _, oneTmpl := range templates {
 		tmplContents, err := os.ReadFile(oneTmpl)
 		if err == nil {
-			tmplName, isOk := strings.CutPrefix(oneTmpl, configPath)
+			tmplName, isOk := strings.CutPrefix(oneTmpl, siteRoot)
 			if !isOk {
-				panic(fmt.Sprintf("Error removing prefix %q on %q", configPath, oneTmpl))
+				panic(fmt.Sprintf("Error removing prefix %q on %q", siteRoot, oneTmpl))
 			}
 			_, err = tmpl.New(tmplName).Parse(string(tmplContents))
 		}
@@ -135,19 +142,57 @@ func LoadTemplates(configPath string, config Config) (*template.Template, error)
 	return tmpl, nil
 }
 
-func ProcessContent(config Config, tmpl *template.Template, contentPath string) error {
-	var content struct {
-		Config struct {
-			Template string
+func LoadContent(siteRoot string, config Config, output map[string]*Content) error {
+	contentFiles := FindFiles(filepath.Join(siteRoot, config.ContentRoot))
+	for _, contentPath := range contentFiles {
+		var content Content
+
+		_, err := toml.DecodeFile(contentPath, &content)
+		if err != nil {
+			return err
 		}
-		Data map[string]any
+
+		contentPath, hasPrefix := strings.CutPrefix(contentPath, siteRoot)
+		if !hasPrefix {
+			panic("Whaaa?")
+		}
+		output[contentPath] = &content
 	}
 
-	_, err := toml.DecodeFile(contentPath, &content)
-	if err != nil {
-		return err
+	hasError := false
+	for thisContentPath, thisContent := range output {
+		for _, subdataPattern := range thisContent.Subdatas.Patterns {
+			for candidatePath, candidateContent := range output {
+				if candidatePath == thisContentPath {
+					continue
+				}
+
+				fmt.Printf("IsMatch(%q, %q)\n", subdataPattern, candidatePath)
+				isMatch, err := filepath.Match(subdataPattern, candidatePath)
+				if err != nil {
+					fmt.Printf("error loading %s: %s\n", thisContentPath, err.Error())
+					hasError = true
+					continue
+				}
+				if isMatch {
+					thisContent.Subdatas.Matches = append(thisContent.Subdatas.Matches, candidateContent)
+				}
+			}
+		}
 	}
 
+	if hasError {
+		return fmt.Errorf("encountered errors while processing content files.")
+	}
+
+	for k, v := range output {
+		fmt.Printf("%q: %+v\n", k, *v)
+	}
+
+	return nil
+}
+
+func ProcessContent(siteRoot string, config Config, tmpl *template.Template, content *Content, contentPath string) error {
 	templateName := content.Config.Template
 	if templateName == "" {
 		return fmt.Errorf("content file must contain key 'config.template', which defines which template file should be used.")
@@ -155,7 +200,7 @@ func ProcessContent(config Config, tmpl *template.Template, contentPath string) 
 
 	var output bytes.Buffer
 	oneTmpl := tmpl.Lookup(templateName)
-	err = oneTmpl.Execute(&output, content)
+	err := oneTmpl.Execute(&output, content)
 	if err != nil {
 		return err
 	}
@@ -175,7 +220,7 @@ func ProcessContent(config Config, tmpl *template.Template, contentPath string) 
 
 	relative = relativeNoExt + tmplExt
 
-	outputPath := filepath.Join(config.OutputRoot, relative)
+	outputPath := filepath.Join(siteRoot, config.OutputRoot, relative)
 	outputDir := filepath.Dir(outputPath)
 	err = os.MkdirAll(outputDir, 0755)
 	if err != nil {
