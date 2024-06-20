@@ -19,9 +19,9 @@ type Content struct {
 }
 
 type Processor interface {
-	LoadTemplates() (*template.Template, error)
-	LoadContent(map[string]*Content) error
-	ClearExistingBuild() error
-	ProcessContent(*template.Template, *Content, string) error
-	CopyStatic() error
+	LoadTemplates() (*template.Template, bool)
+	LoadContent(map[string]*Content) bool
+	ClearExistingOutput() bool
+	ProcessContent(*template.Template, map[string]*Content) bool
+	CopyStatic() bool
 }

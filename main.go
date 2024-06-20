@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 
 	"github.com/treaster.net/ssg/processor"
 )
@@ -13,47 +12,41 @@ func main() {
 
 	flag.Parse()
 
-	proc, err := processor.Load(configPath)
-	if err != nil {
-		fmt.Printf("ERROR: %s\n", err.Error())
+	proc, hasErrors := processor.Load(configPath)
+	if hasErrors {
+		processor.Printfln("ERROR loading config")
 		return
 	}
 
 	allContents := map[string]*processor.Content{}
 
-	tmpl, err := proc.LoadTemplates()
-	if err != nil {
-		fmt.Printf("ERROR: error loading template files: %s\n", err.Error())
-		return
-	}
-
-	err = proc.LoadContent(allContents)
-	if err != nil {
-		fmt.Printf("ERROR: error loading content files: %s\n", err.Error())
-		return
-	}
-
-	err = proc.ClearExistingBuild()
-	if err != nil {
-		fmt.Printf("ERROR: error clearing existing build: %s", err.Error())
-		return
-	}
-
-	hasError := false
-	for contentPath, content := range allContents {
-		err := proc.ProcessContent(tmpl, content, contentPath)
-		if err != nil {
-			hasError = true
-			fmt.Printf("ERROR: error processing content %q: %s\n", contentPath, err.Error())
-		}
-	}
+	tmpl, hasError := proc.LoadTemplates()
 	if hasError {
+		processor.Printfln("ERROR loading template files")
 		return
 	}
 
-	err = proc.CopyStatic()
-	if err != nil {
-		fmt.Printf("ERROR: error loading content files: %s\n", err.Error())
+	hasErrors = proc.LoadContent(allContents)
+	if hasErrors {
+		processor.Printfln("ERROR loading content files")
+		return
+	}
+
+	hasErrors = proc.ClearExistingOutput()
+	if hasErrors {
+		processor.Printfln("ERROR clearing existing output")
+		return
+	}
+
+	hasErrors = proc.ProcessContent(tmpl, allContents)
+	if hasErrors {
+		processor.Printfln("ERROR processing content files")
+		return
+	}
+
+	hasErrors = proc.CopyStatic()
+	if hasErrors {
+		processor.Printfln("ERROR loading content files")
 		return
 	}
 }

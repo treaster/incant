@@ -32,6 +32,11 @@ func Printfln(format string, args ...any) {
 	fmt.Printf(format+"\n", args...)
 }
 
+func Errorfln(format string, args ...any) bool {
+	fmt.Printf(format+"\n", args...)
+	return true
+}
+
 // From https://stackoverflow.com/questions/21060945/simple-way-to-copy-a-file/74107689#74107689
 //
 // Copy copies the contents of the file at srcpath to a regular file

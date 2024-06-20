@@ -18,16 +18,18 @@ type processor struct {
 	config     Config
 }
 
-func Load(configPath string) (Processor, error) {
+func Load(configPath string) (Processor, bool) {
+	Printfln("\nLOADING CONFIG FILE...")
+
 	var config Config
 
 	if configPath == "" {
-		return nil, fmt.Errorf("--config must be defined")
+		return nil, Errorfln("--config must be defined")
 	}
 
 	_, err := toml.DecodeFile(configPath, &config)
 	if err != nil {
-		return nil, err
+		return nil, Errorfln("error decoding config file: %s", err.Error())
 	}
 
 	siteRoot := filepath.Dir(configPath) + "/"
@@ -35,10 +37,12 @@ func Load(configPath string) (Processor, error) {
 		configPath,
 		siteRoot,
 		config,
-	}, nil
+	}, false
 }
 
-func (p *processor) LoadTemplates() (*template.Template, error) {
+func (p *processor) LoadTemplates() (*template.Template, bool) {
+	Printfln("\nLOADING TEMPLATES...")
+
 	tmpl := template.
 		New("ssg").
 		Funcs(template.FuncMap{
@@ -52,7 +56,7 @@ func (p *processor) LoadTemplates() (*template.Template, error) {
 
 	templates := FindFiles(filepath.Join(p.siteRoot, p.config.TemplatesRoot))
 	if len(templates) == 0 {
-		return nil, fmt.Errorf("no templates found in templates root %q", p.config.TemplatesRoot)
+		return nil, Errorfln("no templates found in templates root %q", p.config.TemplatesRoot)
 	}
 
 	var templateNames []string
@@ -60,8 +64,8 @@ func (p *processor) LoadTemplates() (*template.Template, error) {
 	for _, oneTmpl := range templates {
 		tmplContents, err := os.ReadFile(oneTmpl)
 		if err != nil {
-			Printfln("error reading template %q: %s", oneTmpl, err.Error())
-			hasError = true
+			hasError = Errorfln("error reading template %q: %s", oneTmpl, err.Error())
+			continue
 		}
 
 		tmplName, isOk := strings.CutPrefix(oneTmpl, filepath.Join(p.siteRoot, p.config.TemplatesRoot)+"/")
@@ -70,15 +74,11 @@ func (p *processor) LoadTemplates() (*template.Template, error) {
 		}
 		_, err = tmpl.New(tmplName).Parse(string(tmplContents))
 		if err != nil {
-			Printfln("error parsing template %q: %s", oneTmpl, err.Error())
-			hasError = true
+			hasError = Errorfln("error parsing template %q: %s", oneTmpl, err.Error())
+			continue
 		}
 
 		templateNames = append(templateNames, tmplName)
-	}
-
-	if hasError {
-		return nil, fmt.Errorf("encountered errors while parsing templates")
 	}
 
 	Printfln("Loaded templates:")
@@ -87,10 +87,12 @@ func (p *processor) LoadTemplates() (*template.Template, error) {
 	}
 	Printfln("")
 
-	return tmpl, nil
+	return tmpl, hasError
 }
 
-func (p *processor) LoadContent(output map[string]*Content) error {
+func (p *processor) LoadContent(output map[string]*Content) bool {
+	Printfln("\nLOADING CONTENT FILES...")
+
 	hasError := false
 	contentFiles := FindFiles(filepath.Join(p.siteRoot, p.config.ContentRoot))
 	for _, contentPath := range contentFiles {
@@ -99,7 +101,7 @@ func (p *processor) LoadContent(output map[string]*Content) error {
 
 		metadata, err := toml.DecodeFile(contentPath, &content)
 		if err != nil {
-			Printfln("  error decoding TOML: %s", err.Error())
+			hasError = Errorfln("  error decoding TOML: %s", err.Error())
 			continue
 		}
 
@@ -112,18 +114,15 @@ func (p *processor) LoadContent(output map[string]*Content) error {
 		}
 
 		if slices.Index(toplevelKeys, "config") < 0 {
-			Printfln("  missing required key 'config'")
-			hasError = true
+			hasError = Errorfln("  missing required key 'config'")
 			continue
 		}
 		if slices.Index(toplevelKeys, "data") < 0 {
-			Printfln("  missing required key 'data'")
-			hasError = true
+			hasError = Errorfln("  missing required key 'data'")
 			continue
 		}
 		if len(toplevelKeys) > 2 {
-			Printfln("  expected exactly two top-level keys, 'config' and 'data'. found %+v", toplevelKeys)
-			hasError = true
+			hasError = Errorfln("  expected exactly two top-level keys, 'config' and 'data'. found %+v", toplevelKeys)
 			continue
 		}
 
@@ -132,6 +131,10 @@ func (p *processor) LoadContent(output map[string]*Content) error {
 			panic("Whaaa?")
 		}
 		output[contentPath] = &content
+	}
+
+	if hasError {
+		return hasError
 	}
 
 	for thisContentPath, thisContent := range output {
@@ -144,8 +147,7 @@ func (p *processor) LoadContent(output map[string]*Content) error {
 				Printfln("IsMatch(%q, %q)", subdataPattern, candidatePath)
 				isMatch, err := filepath.Match(subdataPattern, candidatePath)
 				if err != nil {
-					Printfln("error loading %s: %s", thisContentPath, err.Error())
-					hasError = true
+					hasError = Errorfln("error loading %s: %s", thisContentPath, err.Error())
 					continue
 				}
 				if isMatch {
@@ -155,33 +157,46 @@ func (p *processor) LoadContent(output map[string]*Content) error {
 		}
 	}
 
-	if hasError {
-		return fmt.Errorf("encountered errors while processing content files.")
-	}
-
 	for k, v := range output {
 		Printfln("%q: %+v", k, *v)
 	}
 
-	return nil
+	return hasError
 }
 
-func (p *processor) ClearExistingBuild() error {
+func (p *processor) ClearExistingOutput() bool {
+	Printfln("\nCLEARING EXISTING OUTPUT...")
+
 	outputPath := filepath.Join(p.siteRoot, p.config.OutputRoot)
-	return os.RemoveAll(outputPath)
+	err := os.RemoveAll(outputPath)
+	if err != nil {
+		return Errorfln("error deleting existing output: %s", err.Error())
+	}
+	return false
 }
 
-func (p *processor) ProcessContent(tmpl *template.Template, content *Content, contentPath string) error {
+func (p *processor) ProcessContent(tmpl *template.Template, allContents map[string]*Content) bool {
+	Printfln("\nEXECUTING CONTENT + TEMPLATES...")
+
+	hasError := false
+	for contentPath, content := range allContents {
+		hasError = p.processOneContent(tmpl, content, contentPath)
+	}
+
+	return hasError
+}
+
+func (p *processor) processOneContent(tmpl *template.Template, content *Content, contentPath string) bool {
 	templateName := content.Config.Template
 	if templateName == "" {
-		return fmt.Errorf("content file must contain key 'config.template', which defines which template file should be used.")
+		return Errorfln("content file must contain key 'config.template', which defines which template file should be used.")
 	}
 
 	var output bytes.Buffer
 	oneTmpl := tmpl.Lookup(templateName)
 	err := oneTmpl.Execute(&output, content)
 	if err != nil {
-		return err
+		return Errorfln("error executing template: %s", err.Error())
 	}
 
 	tmplExt := filepath.Ext(templateName)
@@ -203,18 +218,20 @@ func (p *processor) ProcessContent(tmpl *template.Template, content *Content, co
 	outputDir := filepath.Dir(outputPath)
 	err = os.MkdirAll(outputDir, 0755)
 	if err != nil {
-		return err
+		return Errorfln("error creating output directory: %s", err.Error())
 	}
 
 	err = os.WriteFile(outputPath, output.Bytes(), 0644)
 	if err != nil {
-		return fmt.Errorf("error writing output file: %s", err.Error())
+		return Errorfln("error writing output file: %s", err.Error())
 	}
 
-	return nil
+	return false
 }
 
-func (p *processor) CopyStatic() error {
+func (p *processor) CopyStatic() bool {
+	Printfln("\nCOPYING STATIC FILES...")
+
 	hasError := false
 
 	prefix := filepath.Join(p.siteRoot, p.config.StaticRoot)
@@ -240,8 +257,5 @@ func (p *processor) CopyStatic() error {
 		}
 	}
 
-	if hasError {
-		return fmt.Errorf("had errors copying static files")
-	}
-	return nil
+	return hasError
 }
