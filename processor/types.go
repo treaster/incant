@@ -14,7 +14,15 @@ type Content struct {
 		Template string
 		Items    []string
 	}
-	Items []*Content
+	Data map[string]any
+
+	contentPath string
+	forTemplate *ForTemplate
+}
+
+type ForTemplate struct {
+	Path  string
+	Items []*ForTemplate
 	Data  map[string]any
 }
 

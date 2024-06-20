@@ -32,6 +32,11 @@ func Load(configPath string) (Processor, bool) {
 		return nil, Errorfln("error decoding config file: %s", err.Error())
 	}
 
+	config.StaticRoot = filepath.Clean(config.StaticRoot) + "/"
+	config.TemplatesRoot = filepath.Clean(config.TemplatesRoot) + "/"
+	config.ContentRoot = filepath.Clean(config.ContentRoot) + "/"
+	config.OutputRoot = filepath.Clean(config.OutputRoot) + "/"
+
 	siteRoot := filepath.Dir(configPath) + "/"
 	return &processor{
 		configPath,
@@ -64,7 +69,8 @@ func (p *processor) LoadTemplates() (*template.Template, bool) {
 	for _, oneTmpl := range templates {
 		tmplContents, err := os.ReadFile(oneTmpl)
 		if err != nil {
-			hasError = Errorfln("error reading template %q: %s", oneTmpl, err.Error())
+			newError := Errorfln("error reading template %q: %s", oneTmpl, err.Error())
+			hasError = hasError || newError
 			continue
 		}
 
@@ -74,7 +80,8 @@ func (p *processor) LoadTemplates() (*template.Template, bool) {
 		}
 		_, err = tmpl.New(tmplName).Parse(string(tmplContents))
 		if err != nil {
-			hasError = Errorfln("error parsing template %q: %s", oneTmpl, err.Error())
+			newError := Errorfln("error parsing template %q: %s", oneTmpl, err.Error())
+			hasError = hasError || newError
 			continue
 		}
 
@@ -95,13 +102,15 @@ func (p *processor) LoadContent(output map[string]*Content) bool {
 
 	hasError := false
 	contentFiles := FindFiles(filepath.Join(p.siteRoot, p.config.ContentRoot))
+
 	for _, contentPath := range contentFiles {
 		Printfln("Processing content file: %s...", contentPath)
-		var content Content
+		var rawContent Content
 
-		metadata, err := toml.DecodeFile(contentPath, &content)
+		metadata, err := toml.DecodeFile(contentPath, &rawContent)
 		if err != nil {
-			hasError = Errorfln("  error decoding TOML: %s", err.Error())
+			newError := Errorfln("  error decoding TOML: %s", err.Error())
+			hasError = hasError || newError
 			continue
 		}
 
@@ -114,15 +123,18 @@ func (p *processor) LoadContent(output map[string]*Content) bool {
 		}
 
 		if slices.Index(toplevelKeys, "config") < 0 {
-			hasError = Errorfln("  missing required key 'config'")
+			newError := Errorfln("  missing required key 'config'")
+			hasError = hasError || newError
 			continue
 		}
 		if slices.Index(toplevelKeys, "data") < 0 {
-			hasError = Errorfln("  missing required key 'data'")
+			newError := Errorfln("  missing required key 'data'")
+			hasError = hasError || newError
 			continue
 		}
 		if len(toplevelKeys) > 2 {
-			hasError = Errorfln("  expected exactly two top-level keys, 'config' and 'data'. found %+v", toplevelKeys)
+			newError := Errorfln("  expected exactly two top-level keys, 'config' and 'data'. found %+v", toplevelKeys)
+			hasError = hasError || newError
 			continue
 		}
 
@@ -130,35 +142,55 @@ func (p *processor) LoadContent(output map[string]*Content) bool {
 		if !hasPrefix {
 			panic("Whaaa?")
 		}
-		output[contentPath] = &content
+
+		tmplExt := filepath.Ext(rawContent.Config.Template)
+		contentExt := filepath.Ext(contentPath)
+		contentPathNoExt, isOk := strings.CutSuffix(contentPath, contentExt)
+		if !isOk {
+			panic("Whaa?")
+		}
+		outputPath := contentPathNoExt + tmplExt
+		outputPath, isOk = strings.CutPrefix(outputPath, p.config.ContentRoot)
+		if !isOk {
+			panic(fmt.Sprintf("Whaa? %s vs %s", outputPath, p.config.ContentRoot))
+		}
+
+		rawContent.contentPath = contentPath
+		rawContent.forTemplate = &ForTemplate{
+			Path: outputPath,
+			Data: rawContent.Data,
+		}
+
+		output[contentPath] = &rawContent
 	}
 
 	if hasError {
 		return hasError
 	}
 
-	for thisContentPath, thisContent := range output {
-		for _, subdataPattern := range thisContent.Config.Items {
+	for _, content := range output {
+		for _, subdataPattern := range content.Config.Items {
 			for candidatePath, candidateContent := range output {
-				if candidatePath == thisContentPath {
+				if candidatePath == content.contentPath {
 					continue
 				}
 
 				Printfln("IsMatch(%q, %q)", subdataPattern, candidatePath)
 				isMatch, err := filepath.Match(subdataPattern, candidatePath)
 				if err != nil {
-					hasError = Errorfln("error loading %s: %s", thisContentPath, err.Error())
+					newError := Errorfln("error loading %s: %s", content.forTemplate.Path, err.Error())
+					hasError = hasError || newError
 					continue
 				}
 				if isMatch {
-					thisContent.Items = append(thisContent.Items, candidateContent)
+					content.forTemplate.Items = append(content.forTemplate.Items, candidateContent.forTemplate)
 				}
 			}
 		}
 	}
 
 	for k, v := range output {
-		Printfln("%q: %+v", k, *v)
+		Printfln("  %q: %+v", k, *v)
 	}
 
 	return hasError
@@ -180,7 +212,8 @@ func (p *processor) ProcessContent(tmpl *template.Template, allContents map[stri
 
 	hasError := false
 	for contentPath, content := range allContents {
-		hasError = p.processOneContent(tmpl, content, contentPath)
+		newError := p.processOneContent(tmpl, content, contentPath)
+		hasError = hasError || newError
 	}
 
 	return hasError
@@ -194,7 +227,9 @@ func (p *processor) processOneContent(tmpl *template.Template, content *Content,
 
 	var output bytes.Buffer
 	oneTmpl := tmpl.Lookup(templateName)
-	err := oneTmpl.Execute(&output, content)
+
+	Printfln("CONTENT %+v", content.forTemplate)
+	err := oneTmpl.Execute(&output, content.forTemplate)
 	if err != nil {
 		return Errorfln("error executing template: %s", err.Error())
 	}
