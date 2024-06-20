@@ -9,3 +9,4 @@ bar = """
     """
 
 baz = "END"
+thumbnail = "assets/bitlobber.png"

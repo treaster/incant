@@ -3,11 +3,11 @@ package processor
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"text/template"
 
 	"github.com/BurntSushi/toml"
 )
@@ -49,6 +49,10 @@ func (p *processor) LoadTemplates() (*template.Template, error) {
 		New("ssg").
 		Funcs(template.FuncMap{
 			"RenderMarkdown": RenderMarkdown,
+			"DataUrl": func(assetType string, assetPath string) string {
+				fullPath := filepath.Join(p.siteRoot, assetPath)
+				return DataUrl(assetType, fullPath)
+			},
 		}).
 		Option("missingkey=error")
 
@@ -62,7 +66,7 @@ func (p *processor) LoadTemplates() (*template.Template, error) {
 	for _, oneTmpl := range templates {
 		tmplContents, err := os.ReadFile(oneTmpl)
 		if err != nil {
-			fmt.Errorf("error reading template %q: %s", oneTmpl, err.Error())
+			Printfln("error reading template %q: %s", oneTmpl, err.Error())
 			hasError = true
 		}
 
@@ -72,7 +76,7 @@ func (p *processor) LoadTemplates() (*template.Template, error) {
 		}
 		_, err = tmpl.New(tmplName).Parse(string(tmplContents))
 		if err != nil {
-			fmt.Errorf("error parsing template %q: %s", oneTmpl, err.Error())
+			Printfln("error parsing template %q: %s", oneTmpl, err.Error())
 			hasError = true
 		}
 

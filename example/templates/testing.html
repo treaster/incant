@@ -6,5 +6,8 @@
         {{ .Data.foo }}
         {{ RenderMarkdown .Data.bar }}
         {{ .Data.baz }}
+        <div>
+            <img src="{{ DataUrl "image/png" .Data.thumbnail }}">
+        </div>
     </body>
 </html>
