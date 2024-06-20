@@ -33,6 +33,12 @@ func main() {
 		return
 	}
 
+	err = proc.ClearExistingBuild()
+	if err != nil {
+		fmt.Printf("ERROR: error clearing existing build: %s", err.Error())
+		return
+	}
+
 	hasError := false
 	for contentPath, content := range allContents {
 		err := proc.ProcessContent(tmpl, content, contentPath)
@@ -42,6 +48,12 @@ func main() {
 		}
 	}
 	if hasError {
+		return
+	}
+
+	err = proc.CopyStatic()
+	if err != nil {
+		fmt.Printf("ERROR: error loading content files: %s\n", err.Error())
 		return
 	}
 }

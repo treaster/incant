@@ -12,12 +12,6 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-type Processor interface {
-	LoadTemplates() (*template.Template, error)
-	LoadContent(map[string]*Content) error
-	ProcessContent(*template.Template, *Content, string) error
-}
-
 type processor struct {
 	configPath string
 	siteRoot   string
@@ -172,6 +166,11 @@ func (p *processor) LoadContent(output map[string]*Content) error {
 	return nil
 }
 
+func (p *processor) ClearExistingBuild() error {
+	outputPath := filepath.Join(p.siteRoot, p.config.OutputRoot)
+	return os.RemoveAll(outputPath)
+}
+
 func (p *processor) ProcessContent(tmpl *template.Template, content *Content, contentPath string) error {
 	templateName := content.Config.Template
 	if templateName == "" {
@@ -212,5 +211,37 @@ func (p *processor) ProcessContent(tmpl *template.Template, content *Content, co
 		return fmt.Errorf("error writing output file: %s", err.Error())
 	}
 
+	return nil
+}
+
+func (p *processor) CopyStatic() error {
+	hasError := false
+
+	prefix := filepath.Join(p.siteRoot, p.config.StaticRoot)
+	staticFiles := FindFiles(prefix)
+	for _, staticFile := range staticFiles {
+		partialPath, hasPrefix := strings.CutPrefix(staticFile, prefix)
+		if !hasPrefix {
+			panic("Whaaa?")
+		}
+
+		outPath := filepath.Join(p.siteRoot, p.config.OutputRoot, p.config.StaticRoot, partialPath)
+		outDir := filepath.Dir(outPath)
+		err := os.MkdirAll(outDir, 0755)
+		if err != nil {
+			Printfln("error making dir for static files: %s", outDir, err.Error())
+			hasError = true
+		}
+
+		err = Copy(staticFile, outPath)
+		if err != nil {
+			Printfln("error copying file %s to %s: %s", staticFile, outPath, err.Error())
+			hasError = true
+		}
+	}
+
+	if hasError {
+		return fmt.Errorf("had errors copying static files")
+	}
 	return nil
 }
