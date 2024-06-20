@@ -5,9 +5,9 @@
     <body>
         <hrule></hrule>
         A
-        {{ range .Subdatas.Matches }}
+        {{ range $match := .Items }}
         C
-        <p>{{ .Data.title }}</p>
+        <p><a href="testing.html">{{ $match.Data.title }}</a></p>
         D
         {{ end }}
         B

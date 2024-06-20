@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -53,43 +54,79 @@ func (p *processor) LoadTemplates() (*template.Template, error) {
 
 	templates := FindFiles(filepath.Join(p.siteRoot, p.config.TemplatesRoot))
 	if len(templates) == 0 {
-		return nil, fmt.Errorf("no templates found in templates root %q\n", p.config.TemplatesRoot)
+		return nil, fmt.Errorf("no templates found in templates root %q", p.config.TemplatesRoot)
 	}
 
-	fmt.Println("parse templates", templates)
+	var templateNames []string
 	hasError := false
 	for _, oneTmpl := range templates {
 		tmplContents, err := os.ReadFile(oneTmpl)
-		if err == nil {
-			tmplName, isOk := strings.CutPrefix(oneTmpl, p.siteRoot)
-			if !isOk {
-				panic(fmt.Sprintf("Error removing prefix %q on %q", p.siteRoot, oneTmpl))
-			}
-			_, err = tmpl.New(tmplName).Parse(string(tmplContents))
+		if err != nil {
+			fmt.Errorf("error reading template %q: %s", oneTmpl, err.Error())
+			hasError = true
 		}
 
+		tmplName, isOk := strings.CutPrefix(oneTmpl, filepath.Join(p.siteRoot, p.config.TemplatesRoot)+"/")
+		if !isOk {
+			panic(fmt.Sprintf("Error removing prefix %q on %q", p.siteRoot, oneTmpl))
+		}
+		_, err = tmpl.New(tmplName).Parse(string(tmplContents))
 		if err != nil {
 			fmt.Errorf("error parsing template %q: %s", oneTmpl, err.Error())
 			hasError = true
 		}
+
+		templateNames = append(templateNames, tmplName)
 	}
 
 	if hasError {
 		return nil, fmt.Errorf("encountered errors while parsing templates")
 	}
 
-	fmt.Println("Loaded templates:", tmpl.DefinedTemplates())
+	Printfln("Loaded templates:")
+	for _, tmplName := range templateNames {
+		Printfln("  %s", tmplName)
+	}
+	Printfln("")
+
 	return tmpl, nil
 }
 
 func (p *processor) LoadContent(output map[string]*Content) error {
+	hasError := false
 	contentFiles := FindFiles(filepath.Join(p.siteRoot, p.config.ContentRoot))
 	for _, contentPath := range contentFiles {
+		Printfln("Processing content file: %s...", contentPath)
 		var content Content
 
-		_, err := toml.DecodeFile(contentPath, &content)
+		metadata, err := toml.DecodeFile(contentPath, &content)
 		if err != nil {
-			return err
+			Printfln("  error decoding TOML: %s", err.Error())
+			continue
+		}
+
+		var toplevelKeys []string
+		for _, key := range metadata.Keys() {
+			if strings.IndexRune(key.String(), '.') >= 0 {
+				continue
+			}
+			toplevelKeys = append(toplevelKeys, key.String())
+		}
+
+		if slices.Index(toplevelKeys, "config") < 0 {
+			Printfln("  missing required key 'config'")
+			hasError = true
+			continue
+		}
+		if slices.Index(toplevelKeys, "data") < 0 {
+			Printfln("  missing required key 'data'")
+			hasError = true
+			continue
+		}
+		if len(toplevelKeys) > 2 {
+			Printfln("  expected exactly two top-level keys, 'config' and 'data'. found %+v", toplevelKeys)
+			hasError = true
+			continue
 		}
 
 		contentPath, hasPrefix := strings.CutPrefix(contentPath, p.siteRoot)
@@ -99,23 +136,22 @@ func (p *processor) LoadContent(output map[string]*Content) error {
 		output[contentPath] = &content
 	}
 
-	hasError := false
 	for thisContentPath, thisContent := range output {
-		for _, subdataPattern := range thisContent.Subdatas.Patterns {
+		for _, subdataPattern := range thisContent.Config.Items {
 			for candidatePath, candidateContent := range output {
 				if candidatePath == thisContentPath {
 					continue
 				}
 
-				fmt.Printf("IsMatch(%q, %q)\n", subdataPattern, candidatePath)
+				Printfln("IsMatch(%q, %q)", subdataPattern, candidatePath)
 				isMatch, err := filepath.Match(subdataPattern, candidatePath)
 				if err != nil {
-					fmt.Printf("error loading %s: %s\n", thisContentPath, err.Error())
+					Printfln("error loading %s: %s", thisContentPath, err.Error())
 					hasError = true
 					continue
 				}
 				if isMatch {
-					thisContent.Subdatas.Matches = append(thisContent.Subdatas.Matches, candidateContent)
+					thisContent.Items = append(thisContent.Items, candidateContent)
 				}
 			}
 		}
@@ -126,7 +162,7 @@ func (p *processor) LoadContent(output map[string]*Content) error {
 	}
 
 	for k, v := range output {
-		fmt.Printf("%q: %+v\n", k, *v)
+		Printfln("%q: %+v", k, *v)
 	}
 
 	return nil
@@ -169,7 +205,7 @@ func (p *processor) ProcessContent(tmpl *template.Template, content *Content, co
 
 	err = os.WriteFile(outputPath, output.Bytes(), 0644)
 	if err != nil {
-		return fmt.Errorf("error writing output file: %s\n", err.Error())
+		return fmt.Errorf("error writing output file: %s", err.Error())
 	}
 
 	return nil

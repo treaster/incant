@@ -1,5 +1,5 @@
 [config]
-template = "templates/testing.html"
+template = "testing.html"
 
 [data]
 title = "SSG IS ALIVE!"

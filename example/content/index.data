@@ -1,8 +1,6 @@
 [config]
-template = "templates/testing_index.html"
-
-[subdatas]
-patterns = ["content/*.data"]
+template = "testing_index.html"
+items = ["content/*.data"]
 
 [data]
 title = "OOPS"

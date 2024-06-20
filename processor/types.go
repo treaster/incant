@@ -9,10 +9,8 @@ type Config struct {
 type Content struct {
 	Config struct {
 		Template string
+		Items    []string
 	}
-	Subdatas struct {
-		Patterns []string
-		Matches  []*Content
-	}
-	Data map[string]any
+	Items []*Content
+	Data  map[string]any
 }

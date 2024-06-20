@@ -25,3 +25,7 @@ func FindFiles(fileRoot string) []string {
 
 	return files
 }
+
+func Printfln(format string, args ...any) {
+	fmt.Printf(format+"\n", args...)
+}
