@@ -6,9 +6,9 @@
     <body>
         <hrule></hrule>
         A
-        {{ range $match := .Items }}
+        {{ range $match := .}}
         C
-        <p><a href="{{ $match.Path }}">{{ $match.Data.title }}</a></p>
+        <p><a href="{{ $match.RelativeDirPath}}/{{ $match.Name }}.html">{{ $match.Name }}</a></p>
         D
         {{ end }}
         B

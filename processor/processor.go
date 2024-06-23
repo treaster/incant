@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"text/template"
 
 	"github.com/BurntSushi/toml"
@@ -36,6 +35,11 @@ func Load(configPath string) (Processor, bool) {
 	config.TemplatesRoot = filepath.Clean(config.TemplatesRoot) + "/"
 	config.ContentRoot = filepath.Clean(config.ContentRoot) + "/"
 	config.OutputRoot = filepath.Clean(config.OutputRoot) + "/"
+
+	if config.MappingFile == "" || filepath.Base(config.MappingFile) != config.MappingFile {
+		Errorfln("MappingFile must be a nonempty, bare filename. No directory or path separators should be included. Got %q.", config.MappingFile)
+		return nil, true
+	}
 
 	siteRoot := filepath.Dir(configPath) + "/"
 	return &processor{
@@ -74,10 +78,7 @@ func (p *processor) LoadTemplates() (*template.Template, bool) {
 			continue
 		}
 
-		tmplName, isOk := strings.CutPrefix(oneTmpl, filepath.Join(p.siteRoot, p.config.TemplatesRoot)+"/")
-		if !isOk {
-			panic(fmt.Sprintf("Error removing prefix %q on %q", p.siteRoot, oneTmpl))
-		}
+		tmplName := SafeCutPrefix(oneTmpl, filepath.Join(p.siteRoot, p.config.TemplatesRoot)+"/")
 		_, err = tmpl.New(tmplName).Parse(string(tmplContents))
 		if err != nil {
 			newError := Errorfln("error parsing template %q: %s", oneTmpl, err.Error())
@@ -97,103 +98,89 @@ func (p *processor) LoadTemplates() (*template.Template, bool) {
 	return tmpl, hasError
 }
 
-func (p *processor) LoadContent(output map[string]*Content) bool {
+func (p *processor) LoadContentItems() ([]Item, bool) {
 	Printfln("\nLOADING CONTENT FILES...")
 
 	hasError := false
-	contentFiles := FindFiles(filepath.Join(p.siteRoot, p.config.ContentRoot))
+	pathPrefix := filepath.Join(p.siteRoot, p.config.ContentRoot)
+	contentFiles := FindFiles(pathPrefix)
 
+	var loadedItems []Item
 	for _, contentPath := range contentFiles {
-		Printfln("Processing content file: %s...", contentPath)
-		var rawContent Content
+		if filepath.Base(contentPath) == p.config.MappingFile {
+			continue
+		}
 
-		metadata, err := toml.DecodeFile(contentPath, &rawContent)
+		Printfln("Processing content file: %s...", contentPath)
+
+		var rawContent RawContentFile
+		_, err := toml.DecodeFile(contentPath, &rawContent)
 		if err != nil {
 			newError := Errorfln("  error decoding TOML: %s", err.Error())
 			hasError = hasError || newError
 			continue
 		}
 
-		var toplevelKeys []string
-		for _, key := range metadata.Keys() {
-			if strings.IndexRune(key.String(), '.') >= 0 {
-				continue
-			}
-			toplevelKeys = append(toplevelKeys, key.String())
-		}
+		relativeDirPath := SafeCutPrefix(contentPath, pathPrefix+"/")
+		relativeDirPath = filepath.Dir(relativeDirPath)
 
-		if slices.Index(toplevelKeys, "config") < 0 {
-			newError := Errorfln("  missing required key 'config'")
-			hasError = hasError || newError
-			continue
-		}
-		if slices.Index(toplevelKeys, "data") < 0 {
-			newError := Errorfln("  missing required key 'data'")
-			hasError = hasError || newError
-			continue
-		}
-		if len(toplevelKeys) > 2 {
-			newError := Errorfln("  expected exactly two top-level keys, 'config' and 'data'. found %+v", toplevelKeys)
-			hasError = hasError || newError
-			continue
-		}
-
-		contentPath, hasPrefix := strings.CutPrefix(contentPath, p.siteRoot)
-		if !hasPrefix {
-			panic("Whaaa?")
-		}
-
-		tmplExt := filepath.Ext(rawContent.Config.Template)
-		contentExt := filepath.Ext(contentPath)
-		contentPathNoExt, isOk := strings.CutSuffix(contentPath, contentExt)
-		if !isOk {
-			panic("Whaa?")
-		}
-		outputPath := contentPathNoExt + tmplExt
-		outputPath, isOk = strings.CutPrefix(outputPath, p.config.ContentRoot)
-		if !isOk {
-			panic(fmt.Sprintf("Whaa? %s vs %s", outputPath, p.config.ContentRoot))
-		}
-
-		rawContent.contentPath = contentPath
-		rawContent.forTemplate = &ForTemplate{
-			Path: outputPath,
-			Data: rawContent.Data,
-		}
-
-		output[contentPath] = &rawContent
-	}
-
-	if hasError {
-		return hasError
-	}
-
-	for _, content := range output {
-		for _, subdataPattern := range content.Config.Items {
-			for candidatePath, candidateContent := range output {
-				if candidatePath == content.contentPath {
-					continue
+		for itemType, itemsForType := range rawContent.Item {
+			for itemName, itemData := range itemsForType {
+				Printfln("  found %s: %s", itemType, itemName)
+				if len(itemData) == 0 {
+					panic("empty itemdata")
 				}
-
-				Printfln("IsMatch(%q, %q)", subdataPattern, candidatePath)
-				isMatch, err := filepath.Match(subdataPattern, candidatePath)
-				if err != nil {
-					newError := Errorfln("error loading %s: %s", content.forTemplate.Path, err.Error())
-					hasError = hasError || newError
-					continue
-				}
-				if isMatch {
-					content.forTemplate.Items = append(content.forTemplate.Items, candidateContent.forTemplate)
-				}
+				loadedItems = append(loadedItems, Item{
+					itemName,
+					itemType,
+					relativeDirPath,
+					itemData,
+				})
 			}
 		}
 	}
 
-	for k, v := range output {
-		Printfln("  %q: %+v", k, *v)
+	return loadedItems, hasError
+}
+
+func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
+	Printfln("\nLOADING MAPPING FILES...")
+
+	hasError := false
+	mappingPaths := FindFilesWithName(filepath.Join(p.siteRoot, p.config.ContentRoot), p.config.MappingFile)
+
+	var allMappings []MappingForTemplate
+	for _, mappingPath := range mappingPaths {
+		Printfln("  mapping path %s", mappingPath)
+		var rawMappings MappingFile
+		_, err := toml.DecodeFile(mappingPath, &rawMappings)
+		if err != nil {
+			hasError = Errorfln("error loading mapping file: %s", err.Error())
+			continue
+		}
+
+		cleanPath := SafeCutPrefix(mappingPath, filepath.Join(p.siteRoot, p.config.ContentRoot))
+		cleanPath, _ = TrimExt(cleanPath)
+
+		for _, rawMapping := range rawMappings.Mapping {
+			Printfln("    found %q mapping for types %+v onto template %q", rawMapping.MappingType, rawMapping.ItemTypes, rawMapping.Template)
+
+			AssertNonEmpty(rawMapping.MappingType)
+			AssertNonEmpty(rawMapping.Template)
+
+			forTemplate := MappingForTemplate{
+				cleanPath,
+				rawMapping.MappingType,
+				rawMapping.OutputBase,
+				rawMapping.Template,
+				rawMapping.ItemTypes,
+				rawMapping.SortKey,
+			}
+			allMappings = append(allMappings, forTemplate)
+		}
 	}
 
-	return hasError
+	return allMappings, hasError
 }
 
 func (p *processor) ClearExistingOutput() bool {
@@ -207,49 +194,67 @@ func (p *processor) ClearExistingOutput() bool {
 	return false
 }
 
-func (p *processor) ProcessContent(tmpl *template.Template, allContents map[string]*Content) bool {
+func (p *processor) ProcessContent(tmpl *template.Template, allMappings []MappingForTemplate, allItems []Item) bool {
 	Printfln("\nEXECUTING CONTENT + TEMPLATES...")
 
 	hasError := false
-	for contentPath, content := range allContents {
-		newError := p.processOneContent(tmpl, content, contentPath)
+	for _, mapping := range allMappings {
+		newError := p.processOneMapping(tmpl, mapping, allItems)
 		hasError = hasError || newError
+	}
+	return hasError
+}
+
+func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingForTemplate, allItems []Item) bool {
+	templateName := mapping.Template
+	if templateName == "" {
+		Errorfln("mapping file must contain key 'config.template', which defines which template file should be used.")
+		return true
+	}
+
+	oneTmpl := tmpl.Lookup(templateName)
+
+	var itemMatches []Item
+	for _, item := range allItems {
+		if slices.Index(mapping.ItemTypes, item.Type) < 0 {
+			continue
+		}
+
+		itemMatches = append(itemMatches, item)
+	}
+
+	hasError := false
+
+	switch mapping.MappingType {
+	case "single":
+		for _, item := range itemMatches {
+			newError := p.executeOneTemplate(oneTmpl, item, item.Name)
+			hasError = hasError || newError
+		}
+	case "multi":
+		if mapping.SortKey != "" {
+			slices.SortFunc(itemMatches, MakeItemSort(mapping.SortKey))
+		}
+		newError := p.executeOneTemplate(oneTmpl, itemMatches, mapping.OutputBase)
+		hasError = hasError || newError
+
+	default:
+		panic(fmt.Sprintf("Unexpected mapping type %q", mapping.MappingType))
 	}
 
 	return hasError
 }
 
-func (p *processor) processOneContent(tmpl *template.Template, content *Content, contentPath string) bool {
-	templateName := content.Config.Template
-	if templateName == "" {
-		return Errorfln("content file must contain key 'config.template', which defines which template file should be used.")
-	}
-
+func (p *processor) executeOneTemplate(tmpl *template.Template, tmplData any, outputBase string) bool {
 	var output bytes.Buffer
-	oneTmpl := tmpl.Lookup(templateName)
-
-	Printfln("CONTENT %+v", content.forTemplate)
-	err := oneTmpl.Execute(&output, content.forTemplate)
+	err := tmpl.Execute(&output, tmplData)
 	if err != nil {
 		return Errorfln("error executing template: %s", err.Error())
 	}
 
-	tmplExt := filepath.Ext(templateName)
+	tmplExt := filepath.Ext(tmpl.Name())
 
-	relative, isOk := strings.CutPrefix(filepath.Clean(contentPath), filepath.Clean(p.config.ContentRoot))
-	if !isOk {
-		panic("Whaa?")
-	}
-
-	contentExt := filepath.Ext(relative)
-	relativeNoExt, isOk := strings.CutSuffix(relative, contentExt)
-	if !isOk {
-		panic("Whaa?")
-	}
-
-	relative = relativeNoExt + tmplExt
-
-	outputPath := filepath.Join(p.siteRoot, p.config.OutputRoot, relative)
+	outputPath := filepath.Join(p.siteRoot, p.config.OutputRoot, outputBase+tmplExt)
 	outputDir := filepath.Dir(outputPath)
 	err = os.MkdirAll(outputDir, 0755)
 	if err != nil {
@@ -272,10 +277,7 @@ func (p *processor) CopyStatic() bool {
 	prefix := filepath.Join(p.siteRoot, p.config.StaticRoot)
 	staticFiles := FindFiles(prefix)
 	for _, staticFile := range staticFiles {
-		partialPath, hasPrefix := strings.CutPrefix(staticFile, prefix)
-		if !hasPrefix {
-			panic("Whaaa?")
-		}
+		partialPath := SafeCutPrefix(staticFile, prefix)
 
 		outPath := filepath.Join(p.siteRoot, p.config.OutputRoot, p.config.StaticRoot, partialPath)
 		outDir := filepath.Dir(outPath)
@@ -283,12 +285,14 @@ func (p *processor) CopyStatic() bool {
 		if err != nil {
 			Printfln("error making dir for static files: %s", outDir, err.Error())
 			hasError = true
+			continue
 		}
 
 		err = Copy(staticFile, outPath)
 		if err != nil {
 			Printfln("error copying file %s to %s: %s", staticFile, outPath, err.Error())
 			hasError = true
+			continue
 		}
 	}
 

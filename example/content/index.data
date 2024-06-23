@@ -1,6 +1,0 @@
-[config]
-template = "testing_index.html"
-items = ["content/*.data"]
-
-[data]
-title = "OOPS"

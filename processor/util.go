@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 )
 
 func FindFiles(fileRoot string) []string {
@@ -20,6 +22,22 @@ func FindFiles(fileRoot string) []string {
 			return nil
 		}
 		if !d.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	})
+
+	return files
+}
+
+func FindFilesWithName(fileRoot string, targetName string) []string {
+	var files []string
+	filepath.WalkDir(fileRoot, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		baseName := filepath.Base(path)
+		if baseName == targetName {
 			files = append(files, path)
 		}
 		return nil
@@ -65,4 +83,76 @@ func Copy(srcpath, dstpath string) (err error) {
 
 	_, err = io.Copy(w, r)
 	return err
+}
+
+func TrimExt(path string) (string, string) {
+	ext := filepath.Ext(path)
+	noExt, hasExt := strings.CutSuffix(path, ext)
+	if !hasExt {
+		panic("Whaaa?")
+	}
+	return noExt, ext
+
+}
+
+func SafeCutPrefix(s string, prefix string) string {
+	s, hasPrefix := strings.CutPrefix(s, prefix)
+	if !hasPrefix {
+		panic("Whaa?")
+	}
+	return s
+}
+
+func AssertNonEmpty(s string) {
+	if s == "" {
+		panic("unexpected empty string")
+	}
+}
+
+func MakeItemSort(sortKey string) func(Item, Item) int {
+	return func(a, b Item) int {
+		keyA, hasKey := a.Data[sortKey]
+		if !hasKey {
+			panic("missing sort key in item")
+		}
+
+		keyB, hasKey := b.Data[sortKey]
+		if !hasKey {
+			panic("missing sort key in item")
+		}
+
+		valueA := reflect.ValueOf(keyA)
+		valueB := reflect.ValueOf(keyB)
+
+		if valueA.Type() != valueB.Type() {
+			panic("mismatched compare types")
+		}
+
+		switch {
+		case valueA.CanUint():
+			return compare(valueA.Uint(), valueB.Uint())
+		case valueA.CanInt():
+			return compare(valueA.Int(), valueB.Int())
+		case valueA.CanFloat():
+			return compare(valueA.Float(), valueB.Float())
+		case valueA.Kind() == reflect.String:
+			return compare(valueA.String(), valueB.String())
+		default:
+			panic("unsupported sortkey type")
+		}
+	}
+}
+
+type sortable interface {
+	uint | uint8 | uint16 | uint32 | uint64 | int | int8 | int16 | int32 | int64 | float32 | float64 | string
+}
+
+func compare[K sortable](v1 K, v2 K) int {
+	if v1 < v2 {
+		return -1
+	}
+	if v1 > v2 {
+		return 1
+	}
+	return 0
 }

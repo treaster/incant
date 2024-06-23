@@ -18,17 +18,21 @@ func main() {
 		return
 	}
 
-	allContents := map[string]*processor.Content{}
-
 	tmpl, hasError := proc.LoadTemplates()
 	if hasError {
 		processor.Printfln("ERROR loading template files")
 		return
 	}
 
-	hasErrors = proc.LoadContent(allContents)
+	allItems, hasErrors := proc.LoadContentItems()
 	if hasErrors {
 		processor.Printfln("ERROR loading content files")
+		return
+	}
+
+	allMappings, hasErrors := proc.LoadMappings()
+	if hasErrors {
+		processor.Printfln("ERROR loading mapping files")
 		return
 	}
 
@@ -38,7 +42,7 @@ func main() {
 		return
 	}
 
-	hasErrors = proc.ProcessContent(tmpl, allContents)
+	hasErrors = proc.ProcessContent(tmpl, allMappings, allItems)
 	if hasErrors {
 		processor.Printfln("ERROR processing content files")
 		return

@@ -1,3 +1,4 @@
+MappingFile = "mapping.toml"
 TemplatesRoot = "./templates"
 ContentRoot = "./content"
 StaticRoot = "./static"

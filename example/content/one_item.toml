@@ -1,0 +1,6 @@
+[item.testitem.item3]
+title = "Item3!"
+foo = "Foo3"
+bar = """Bar3"""
+baz = "Baz3"
+thumbnail = "assets/bitlobber.png"

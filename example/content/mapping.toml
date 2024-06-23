@@ -1,0 +1,11 @@
+[[mapping]]
+mappingtype = "multi"
+outputBase = "index"
+template = "index.html"
+itemtypes = ["testitem"]
+sortKey = "title"
+
+[[mapping]]
+mappingtype = "single"
+template = "item.html"
+itemtypes = ["testitem"]

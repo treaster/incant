@@ -3,33 +3,50 @@ package processor
 import "text/template"
 
 type Config struct {
+	MappingFile   string
 	StaticRoot    string
 	TemplatesRoot string
 	ContentRoot   string
 	OutputRoot    string
 }
 
-type Content struct {
-	Config struct {
-		Template string
-		Items    []string
-	}
-	Data map[string]any
-
-	contentPath string
-	forTemplate *ForTemplate
+type RawContentFile struct {
+	Item map[string]map[string]map[string]any // type->itemname->item
 }
 
-type ForTemplate struct {
-	Path  string
-	Items []*ForTemplate
-	Data  map[string]any
+type Item struct {
+	Name            string
+	Type            string
+	RelativeDirPath string
+	Data            map[string]any
+}
+
+type RawMapping struct {
+	MappingType string
+	OutputBase  string
+	Template    string
+	ItemTypes   []string
+	SortKey     string
+}
+
+type MappingForTemplate struct {
+	MappingPath string
+	MappingType string
+	OutputBase  string
+	Template    string
+	ItemTypes   []string
+	SortKey     string
+}
+
+type MappingFile struct {
+	Mapping []RawMapping
 }
 
 type Processor interface {
 	LoadTemplates() (*template.Template, bool)
-	LoadContent(map[string]*Content) bool
+	LoadContentItems() ([]Item, bool)
+	LoadMappings() ([]MappingForTemplate, bool)
 	ClearExistingOutput() bool
-	ProcessContent(*template.Template, map[string]*Content) bool
+	ProcessContent(*template.Template, []MappingForTemplate, []Item) bool
 	CopyStatic() bool
 }
