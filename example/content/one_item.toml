@@ -1,5 +1,6 @@
-[item.testitem.item3]
-title = "Item3!"
+[item.item3]
+title = "Item3"
+tag = "testitem"
 foo = "Foo3"
 bar = """Bar3"""
 baz = "Baz3"

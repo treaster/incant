@@ -11,31 +11,26 @@ type Config struct {
 }
 
 type RawContentFile struct {
-	Item map[string]map[string]map[string]any // type->itemname->item
+	Item map[string]map[string]any // itemname->item
 }
 
 type Item struct {
 	Name            string
-	Type            string
 	RelativeDirPath string
 	Data            map[string]any
 }
 
 type RawMapping struct {
-	MappingType string
-	OutputBase  string
-	Template    string
-	ItemTypes   []string
-	SortKey     string
+	OutputBase string
+	Template   string
+	Selector   string
 }
 
 type MappingForTemplate struct {
 	MappingPath string
-	MappingType string
 	OutputBase  string
 	Template    string
-	ItemTypes   []string
-	SortKey     string
+	Selector    string
 }
 
 type MappingFile struct {

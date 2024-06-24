@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
+	"reflect"
+	"strings"
 	"text/template"
 
 	"github.com/BurntSushi/toml"
@@ -124,19 +125,49 @@ func (p *processor) LoadContentItems() ([]Item, bool) {
 		relativeDirPath := SafeCutPrefix(contentPath, pathPrefix+"/")
 		relativeDirPath = filepath.Dir(relativeDirPath)
 
-		for itemType, itemsForType := range rawContent.Item {
-			for itemName, itemData := range itemsForType {
-				Printfln("  found %s: %s", itemType, itemName)
-				if len(itemData) == 0 {
-					panic("empty itemdata")
-				}
-				loadedItems = append(loadedItems, Item{
-					itemName,
-					itemType,
-					relativeDirPath,
-					itemData,
-				})
+		for itemName, itemData := range rawContent.Item {
+			Printfln("  found %s", itemName)
+			if len(itemData) == 0 {
+				panic("empty itemdata")
 			}
+			loadedItems = append(loadedItems, Item{
+				itemName,
+				relativeDirPath,
+				itemData,
+			})
+		}
+	}
+
+	type rewriteTuple struct {
+		key      string
+		newValue []Item
+	}
+
+	// Find embeded item-selection queries and rewrite them to be the actual items instead of the query string.
+	for i, _ := range loadedItems {
+		item := &loadedItems[i]
+
+		var rewrites []rewriteTuple
+		for k, v := range item.Data {
+			rv := reflect.ValueOf(v)
+			if rv.Kind() != reflect.String {
+				continue
+			}
+
+			vs := rv.String()
+			if !strings.HasPrefix(vs, "selector:") {
+				continue
+			}
+
+			vs = SafeCutPrefix(vs, "selector:")
+
+			selectedItems := FilterBySelector(vs, loadedItems)
+			rewrites = append(rewrites, rewriteTuple{k, selectedItems})
+		}
+
+		for _, rewrite := range rewrites {
+			Printfln("rewrite %q -> %+v", rewrite.key, rewrite.newValue)
+			item.Data[rewrite.key] = rewrite.newValue
 		}
 	}
 
@@ -163,18 +194,15 @@ func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
 		cleanPath, _ = TrimExt(cleanPath)
 
 		for _, rawMapping := range rawMappings.Mapping {
-			Printfln("    found %q mapping for types %+v onto template %q", rawMapping.MappingType, rawMapping.ItemTypes, rawMapping.Template)
+			Printfln("    found mapping for types %+v onto template %q", rawMapping.Selector, rawMapping.Template)
 
-			AssertNonEmpty(rawMapping.MappingType)
 			AssertNonEmpty(rawMapping.Template)
 
 			forTemplate := MappingForTemplate{
 				cleanPath,
-				rawMapping.MappingType,
 				rawMapping.OutputBase,
 				rawMapping.Template,
-				rawMapping.ItemTypes,
-				rawMapping.SortKey,
+				rawMapping.Selector,
 			}
 			allMappings = append(allMappings, forTemplate)
 		}
@@ -213,39 +241,26 @@ func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingFo
 	}
 
 	oneTmpl := tmpl.Lookup(templateName)
-
-	var itemMatches []Item
-	for _, item := range allItems {
-		if slices.Index(mapping.ItemTypes, item.Type) < 0 {
-			continue
-		}
-
-		itemMatches = append(itemMatches, item)
+	if oneTmpl == nil {
+		panic(fmt.Sprintf("error: template %q not found", templateName))
 	}
+
+	itemMatches := FilterBySelector(mapping.Selector, allItems)
 
 	hasError := false
 
-	switch mapping.MappingType {
-	case "single":
-		for _, item := range itemMatches {
-			newError := p.executeOneTemplate(oneTmpl, item, item.Name)
-			hasError = hasError || newError
-		}
-	case "multi":
-		if mapping.SortKey != "" {
-			slices.SortFunc(itemMatches, MakeItemSort(mapping.SortKey))
-		}
-		newError := p.executeOneTemplate(oneTmpl, itemMatches, mapping.OutputBase)
+	Printfln("selected %d items", len(itemMatches))
+	for _, item := range itemMatches {
+		newError := p.executeOneTemplate(oneTmpl, item, item.Name)
 		hasError = hasError || newError
-
-	default:
-		panic(fmt.Sprintf("Unexpected mapping type %q", mapping.MappingType))
 	}
 
 	return hasError
 }
 
 func (p *processor) executeOneTemplate(tmpl *template.Template, tmplData any, outputBase string) bool {
+	Printfln("Execute template %s", tmpl.Name())
+
 	var output bytes.Buffer
 	err := tmpl.Execute(&output, tmplData)
 	if err != nil {

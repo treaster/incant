@@ -1,11 +1,8 @@
 [[mapping]]
-mappingtype = "multi"
 outputBase = "index"
 template = "index.html"
-itemtypes = ["testitem"]
-sortKey = "title"
+selector = "tag = projects_index"
 
 [[mapping]]
-mappingtype = "single"
 template = "item.html"
-itemtypes = ["testitem"]
+selector = "tag = testitem"

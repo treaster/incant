@@ -156,3 +156,45 @@ func compare[K sortable](v1 K, v2 K) int {
 	}
 	return 0
 }
+
+func FilterBySelector(selector string, items []Item) []Item {
+	var itemMatches []Item
+	for _, item := range items {
+		if !MatchesSelector(selector, item) {
+			continue
+		}
+
+		itemMatches = append(itemMatches, item)
+	}
+	return itemMatches
+}
+
+func MatchesSelector(selector string, item Item) bool {
+	parts := strings.Split(selector, " ")
+	if len(parts) != 3 {
+		panic(fmt.Sprintf("invalid selector: must be space-delimited with exactly three parts. got %q", selector))
+	}
+
+	key := parts[0]
+	comp := parts[1]
+	match := parts[2]
+
+	value, hasKey := item.Data[key]
+	if !hasKey {
+		return false
+	}
+
+	switch comp {
+	case "=":
+		rv := reflect.ValueOf(value)
+		if rv.Kind() != reflect.String {
+			panic(fmt.Sprintf("invalid selector matching into non-string value for key %q -> %+v.", key, value))
+		}
+
+		result := rv.String() == match
+		Printfln("selector compare %q to %q -> %v", rv.String(), match, result)
+		return result
+	default:
+		panic(fmt.Sprintf("invalid selector: unknown comparator %q", comp))
+	}
+}

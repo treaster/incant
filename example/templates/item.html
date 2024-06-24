@@ -4,9 +4,11 @@
         <link rel="stylesheet" type="text/css" href="static/main.css" />
     </head>
     <body>
-        {{ .Data.foo }}
-        {{ RenderMarkdown .Data.bar }}
-        {{ .Data.baz }}
+        <div>Some data fields about {{ .Data.title }}</div>
+        <div>{{ .Data.foo }}</div>
+        <div>{{ RenderMarkdown .Data.bar }}</div>
+        <div>{{ .Data.baz }}</div>
+        <div>This line is the same for all items!</div>
         <div>
             <img src="{{ DataUrl "image/png" .Data.thumbnail }}">
         </div>

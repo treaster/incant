@@ -5,9 +5,13 @@
     </head>
     <body>
         <h1>List of Items</h1>
-        {{ range $match := .Data.items}}
-        <div><a href="{{ $match.RelativeDirPath}}/{{ $match.Name }}.html">{{ $match.Name }}</a></div>
-        {{ end }}
+        
+        <div><a href="./item1.html">item1</a></div>
+        
+        <div><a href="./item2.html">item2</a></div>
+        
+        <div><a href="./item3.html">item3</a></div>
+        
         <hrule></hrule>
     </body>
 </html>
