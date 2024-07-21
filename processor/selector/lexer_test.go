@@ -1,11 +1,11 @@
-package interpreter_test
+package selector_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/treaster/shire/examples/calc/interpreter"
+	"github.com/treaster.net/ssg/processor/selector"
 	"github.com/treaster/shire/lexer"
 )
 
@@ -16,16 +16,27 @@ func TestLexer(t *testing.T) {
 		expectError    string
 	}{
 		{
-			"( ) or SomeIdent and = in not",
+			"+ - / * ( ) 123 SomeIdent = +-/*()OtherIdent123=",
 			[]lexer.LexItem{
-				{interpreter.LPAREN, "("},
-				{interpreter.RPAREN, ")"},
-				{interpreter.OR, "or"},
-				{interpreter.IDENTIFIER, "SomeIdent"},
-				{interpreter.AND, "and"},
-				{interpreter.EQUAL, "="},
-				{interpreter.IN, "in"},
-				{interpreter.NOT, "not"},
+				{selector.PLUS, "+"},
+				{selector.MINUS, "-"},
+				{selector.SLASH, "/"},
+				{selector.STAR, "*"},
+				{selector.LPAREN, "("},
+				{selector.RPAREN, ")"},
+				{selector.INTEGER, "123"},
+				{selector.IDENTIFIER, "SomeIdent"},
+				{selector.EQUAL, "="},
+
+				{selector.PLUS, "+"},
+				{selector.MINUS, "-"},
+				{selector.SLASH, "/"},
+				{selector.STAR, "*"},
+				{selector.LPAREN, "("},
+				{selector.RPAREN, ")"},
+				{selector.IDENTIFIER, "OtherIdent"},
+				{selector.INTEGER, "123"},
+				{selector.EQUAL, "="},
 			},
 			"",
 		},
@@ -36,7 +47,7 @@ func TestLexer(t *testing.T) {
 		// Consume each item in the expected tokens and ensure that its value is lexable.
 		{
 			for j, inputToken := range testCase.expectedTokens {
-				scan := interpreter.NewScanner(inputToken.Val)
+				scan := selector.NewScanner(inputToken.Val)
 				item := scan.Scan()
 				require.Equal(t, inputToken, item, inputToken.Val, fmt.Sprintf("Test case %d token %d", i, j))
 			}
@@ -44,7 +55,7 @@ func TestLexer(t *testing.T) {
 
 		// Verify that the long string together of multiple tokens is lexed correctly.
 		{
-			scan := interpreter.NewScanner(testCase.expr)
+			scan := selector.NewScanner(testCase.expr)
 			for j, expected := range testCase.expectedTokens {
 				item := scan.Scan()
 				require.Equal(t, expected, item, fmt.Sprintf("Test case %d item %d", i, j))

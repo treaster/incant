@@ -1,4 +1,4 @@
-package interpreter
+package selector
 
 import (
 	"github.com/treaster/shire/lexer"
@@ -6,13 +6,14 @@ import (
 )
 
 const (
-	LPAREN     lexer.Token = "("
+	PLUS       lexer.Token = "+"
+	MINUS                  = "-"
+	SLASH                  = "/"
+	STAR                   = "*"
+	LPAREN                 = "("
 	RPAREN                 = ")"
 	EQUAL                  = "="
-	IN                     = "IN"
-	OR                     = "OR"
-	AND                    = "AND"
-	NOT                    = "NOT"
+	INTEGER                = "INTEGER"
 	IDENTIFIER             = "IDENTIFIER"
 )
 
@@ -23,16 +24,13 @@ func NewScanner(input string) parser.Scanner {
 
 func lexBasic(l lexer.Engine) lexer.StateFn {
 	symbols := map[rune]lexer.Token{
+		'+': PLUS,
+		'-': MINUS,
+		'*': STAR,
+		'/': SLASH,
 		'(': LPAREN,
 		')': RPAREN,
 		'=': EQUAL,
-	}
-
-	keywords := map[string]lexer.Token{
-		"and": AND,
-		"or":  OR,
-		"not": NOT,
-		"in":  IN,
 	}
 
 	r := l.Next()
@@ -47,13 +45,8 @@ func lexBasic(l lexer.Engine) lexer.StateFn {
 	case lexer.IsWhitespace(r):
 		l.Ignore()
 	case lexer.IsLetter(r):
-		run := l.AcceptRun(lexer.IsLetter)
-		token, isKeyword := keywords[run]
-		if isKeyword {
-			l.Emit(token)
-		} else {
-			l.Emit(IDENTIFIER)
-		}
+		_ = l.AcceptRun(lexer.IsLetter)
+		l.Emit(IDENTIFIER)
 		return lexBasic
 	case lexer.IsDigit(r):
 		l.Backup()

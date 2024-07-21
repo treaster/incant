@@ -1,10 +1,20 @@
-package interpreter
+package selector
 
-import "fmt"
+import (
+	"fmt"
 
-func VarReference(varname string) Expression {
+	"github.com/treaster/shire/parser"
+)
+
+func VarReference(args []*parser.ParseItem) parser.AstNode {
+	var identifier string
+	CheckArgs(
+		args,
+		IdentifierArg{&identifier},
+	)
+
 	return varref{
-		varname,
+		identifier,
 	}
 }
 

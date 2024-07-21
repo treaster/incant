@@ -1,12 +1,20 @@
-package interpreter
+package selector
 
 import (
 	"strconv"
+
+	"github.com/treaster/shire/parser"
 )
 
-func IntConstant(val int) Expression {
+func IntConstant(args []*parser.ParseItem) parser.AstNode {
+	var number int
+	CheckArgs(
+		args,
+		IntArg{&number},
+	)
+
 	return constant{
-		val,
+		number,
 	}
 }
 

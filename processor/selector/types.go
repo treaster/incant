@@ -1,13 +1,8 @@
-package interpreter
+package selector
 
-type Context map[string]int
+type Context map[string]any
 
 type Expression interface {
 	Eval(Context, *int) error
-	String() string
-}
-
-type Statement interface {
-	Exec(Context) error
 	String() string
 }
