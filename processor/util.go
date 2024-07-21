@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+
+	"github.com/google/cel-go/cel"
 )
 
 func FindFiles(fileRoot string) []string {
@@ -170,31 +172,30 @@ func FilterBySelector(selector string, items []Item) []Item {
 }
 
 func MatchesSelector(selector string, item Item) bool {
-	parts := strings.Split(selector, " ")
-	if len(parts) != 3 {
-		panic(fmt.Sprintf("invalid selector: must be space-delimited with exactly three parts. got %q", selector))
+	env, err := cel.NewEnv()
+	if err != nil {
+		panic(err.Error())
 	}
 
-	key := parts[0]
-	comp := parts[1]
-	match := parts[2]
-
-	value, hasKey := item.Data[key]
-	if !hasKey {
-		return false
+	ast, issues := env.Compile(selector)
+	if len(issues.Errors()) > 0 {
+		panic(issues.String())
 	}
 
-	switch comp {
-	case "=":
-		rv := reflect.ValueOf(value)
-		if rv.Kind() != reflect.String {
-			panic(fmt.Sprintf("invalid selector matching into non-string value for key %q -> %+v.", key, value))
-		}
-
-		result := rv.String() == match
-		Printfln("selector compare %q to %q -> %v", rv.String(), match, result)
-		return result
-	default:
-		panic(fmt.Sprintf("invalid selector: unknown comparator %q", comp))
+	prog, err := env.Program(ast)
+	if err != nil {
+		panic(err.Error())
 	}
+
+	fmt.Println("XXX", item.Data)
+	resultVal, _, err := prog.Eval(item.Data)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if resultVal.Type() != cel.BoolType {
+		panic(fmt.Sprintf("wrong type %s", resultVal.Type()))
+	}
+
+	return resultVal.Value().(bool)
 }

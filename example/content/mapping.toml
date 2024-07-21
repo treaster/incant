@@ -1,8 +1,8 @@
 [[mapping]]
 outputBase = "index"
 template = "index.html"
-selector = "tag = projects_index"
+selector = "tag == projects_index"
 
 [[mapping]]
 template = "item.html"
-selector = "tag = testitem"
+selector = "tag == \"testitem\""
