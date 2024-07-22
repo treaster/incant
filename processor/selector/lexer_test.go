@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/treaster.net/ssg/processor/selector"
 	"github.com/treaster/shire/lexer"
+	"github.com/treaster/ssg/processor/selector"
 )
 
 func TestLexer(t *testing.T) {

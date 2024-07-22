@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/google/cel-go/cel"
+	"github.com/itchyny/gojq"
 )
 
 func FindFiles(fileRoot string) []string {
@@ -159,43 +159,32 @@ func compare[K sortable](v1 K, v2 K) int {
 	return 0
 }
 
-func FilterBySelector(selector string, items []Item) []Item {
-	var itemMatches []Item
-	for _, item := range items {
-		if !MatchesSelector(selector, item) {
-			continue
+func FilterBySelector(selector string, siteData map[string]any) []any {
+	query, err := gojq.Parse(selector)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	var matches []any
+	iter := query.Run(selector, siteData)
+	for {
+		v, ok := iter.Next()
+		if !ok {
+			break
 		}
 
-		itemMatches = append(itemMatches, item)
-	}
-	return itemMatches
-}
+		err, isErr := v.(error)
+		if isErr {
+			haltErr, isHalt := err.(*gojq.HaltError)
+			if isHalt && err.Value() == nil {
+				break
+			}
 
-func MatchesSelector(selector string, item Item) bool {
-	env, err := cel.NewEnv()
-	if err != nil {
-		panic(err.Error())
-	}
+			panic(fmt.Sprintf("gojq error: %q", err.Error()))
+		}
 
-	ast, issues := env.Compile(selector)
-	if len(issues.Errors()) > 0 {
-		panic(issues.String())
+		matches = append(matches, v)
 	}
 
-	prog, err := env.Program(ast)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	fmt.Println("XXX", item.Data)
-	resultVal, _, err := prog.Eval(item.Data)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	if resultVal.Type() != cel.BoolType {
-		panic(fmt.Sprintf("wrong type %s", resultVal.Type()))
-	}
-
-	return resultVal.Value().(bool)
+	return matches
 }

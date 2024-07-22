@@ -6,19 +6,11 @@ type Config struct {
 	MappingFile   string
 	StaticRoot    string
 	TemplatesRoot string
-	ContentRoot   string
+	ContentFile   string
 	OutputRoot    string
 }
 
-type RawContentFile struct {
-	Item map[string]map[string]any // itemname->item
-}
-
-type Item struct {
-	Name            string
-	RelativeDirPath string
-	Data            map[string]any
-}
+type Content map[string]any
 
 type RawMapping struct {
 	OutputBase string
