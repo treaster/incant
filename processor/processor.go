@@ -96,7 +96,7 @@ func (p *processor) LoadTemplates() (*template.Template, bool) {
 	return tmpl, hasError
 }
 
-func (p *processor) LoadSiteContent() (map[string]any, bool) {
+func (p *processor) LoadSiteContent() (any, bool) {
 	Printfln("\nLOADING SITE CONTENT...")
 
 	hasError := false
@@ -164,7 +164,7 @@ func (p *processor) ClearExistingOutput() bool {
 	return false
 }
 
-func (p *processor) ProcessContent(tmpl *template.Template, allMappings []MappingForTemplate, siteContent map[string]any) bool {
+func (p *processor) ProcessContent(tmpl *template.Template, allMappings []MappingForTemplate, siteContent any) bool {
 	Printfln("\nEXECUTING CONTENT + TEMPLATES...")
 
 	hasError := false
@@ -175,7 +175,7 @@ func (p *processor) ProcessContent(tmpl *template.Template, allMappings []Mappin
 	return hasError
 }
 
-func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingForTemplate, siteContent map[string]any) bool {
+func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingForTemplate, siteContent any) bool {
 	templateName := mapping.Template
 	if templateName == "" {
 		Errorfln("mapping file must contain key 'config.template', which defines which template file should be used.")

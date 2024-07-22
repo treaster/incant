@@ -161,7 +161,7 @@ func compare[K sortable](v1 K, v2 K) int {
 	return 0
 }
 
-func FilterBySelector(selector string, siteData map[string]any) []any {
+func FilterBySelector(selector string, siteData any) []any {
 	query, err := gojq.Parse(selector)
 	if err != nil {
 		panic(err.Error())

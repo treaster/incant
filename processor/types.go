@@ -33,9 +33,9 @@ type MappingFile struct {
 
 type Processor interface {
 	LoadTemplates() (*template.Template, bool)
-	LoadSiteContent() (map[string]any, bool)
+	LoadSiteContent() (any, bool)
 	LoadMappings() ([]MappingForTemplate, bool)
 	ClearExistingOutput() bool
-	ProcessContent(*template.Template, []MappingForTemplate, map[string]any) bool
+	ProcessContent(*template.Template, []MappingForTemplate, any) bool
 	CopyStatic() bool
 }

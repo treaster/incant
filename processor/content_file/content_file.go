@@ -13,7 +13,7 @@ type context struct {
 	fileLoader func(string) ([]byte, error)
 
 	inProgress *golist.Set[string]
-	allResults map[string]map[string]any
+	allResults map[string]any
 	stack      []string
 	errors     []error
 }
@@ -27,12 +27,12 @@ func (ctx *context) addError(s string, args ...any) {
 func EvalContentFile(
 	fileLoader func(string) ([]byte, error),
 	filePath string) (
-	map[string]any, []error) {
+	any, []error) {
 
 	ctx := context{
 		fileLoader,
 		golist.NewSet[string](),
-		map[string]map[string]any{},
+		map[string]any{},
 		[]string{},
 		nil,
 	}
@@ -49,7 +49,7 @@ func EvalContentFile(
 	return result, ctx.errors
 }
 
-func evalOneFile(ctx *context, contentPath string) map[string]any {
+func evalOneFile(ctx *context, contentPath string) any {
 	if ctx.inProgress.Has(contentPath) {
 		ctx.addError("circular reference with %q", contentPath)
 		return nil
@@ -77,10 +77,9 @@ func evalOneFile(ctx *context, contentPath string) map[string]any {
 	value := evalValue(ctx, fmt.Sprintf("file:%s", contentPath), reflect.ValueOf(origContent))
 	ctx.inProgress.Remove(contentPath)
 
-	mapValue := value.(map[string]any)
-	ctx.allResults[contentPath] = mapValue
+	ctx.allResults[contentPath] = value
 
-	return mapValue
+	return value
 }
 
 func evalValue(ctx *context, stackKey string, contentValue reflect.Value) any {

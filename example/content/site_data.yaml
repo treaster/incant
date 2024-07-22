@@ -11,4 +11,4 @@
   bar: '"""Bar2"""'
   baz: "Baz2"
   thumbnail: "assets/bitlobber.png"
-- "file:one_item.toml"
+- "file:example/content/one_item.yaml"
