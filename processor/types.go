@@ -3,11 +3,11 @@ package processor
 import "text/template"
 
 type Config struct {
-	MappingFile   string
-	StaticRoot    string
-	TemplatesRoot string
-	SiteDataFile  string
-	OutputRoot    string
+	MappingFile   string `yaml:"MappingFile"`
+	StaticRoot    string `yaml:"StaticRoot"`
+	TemplatesRoot string `yaml:"TemplatesRoot"`
+	SiteDataFile  string `yaml:"SiteDataFile"`
+	OutputRoot    string `yaml:"OutputRoot"`
 }
 
 type Content map[string]any

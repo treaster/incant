@@ -8,7 +8,7 @@ import (
 
 func main() {
 	var configPath string
-	flag.StringVar(&configPath, "config", "", "TOML file defining static site params")
+	flag.StringVar(&configPath, "config", "", "YAML file defining static site params")
 
 	flag.Parse()
 

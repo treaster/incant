@@ -1,0 +1,6 @@
+title: "Item3"
+tag: "testitem"
+foo: "Foo3"
+bar: """Bar3"""
+baz: "Baz3"
+thumbnail: "assets/bitlobber.png"

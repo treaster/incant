@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/itchyny/gojq"
+	"gopkg.in/yaml.v3"
 )
 
 func FindFiles(fileRoot string) []string {
@@ -234,4 +235,13 @@ func EvalOutputBase(expr string, itemData any) string {
 	default:
 		panic(fmt.Sprintf("unexpected expr type %s", exprType))
 	}
+}
+
+func LoadYamlFile(filepath string, output any) error {
+	fileBytes, err := os.ReadFile(filepath)
+	if err != nil {
+		return err
+	}
+
+	return yaml.Unmarshal(fileBytes, output)
 }

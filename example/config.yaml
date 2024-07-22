@@ -1,0 +1,6 @@
+---
+MappingFile: "mapping.yaml"
+StaticRoot: "./static"
+TemplatesRoot: "./templates"
+SiteDataFile: "./content/site_data.yaml"
+OutputRoot: "./output"

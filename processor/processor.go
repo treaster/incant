@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/BurntSushi/toml"
 	"github.com/treaster/ssg/processor/content_file"
 )
 
@@ -20,13 +19,12 @@ type processor struct {
 func Load(configPath string) (Processor, bool) {
 	Printfln("\nLOADING CONFIG FILE...")
 
-	var config Config
-
 	if configPath == "" {
 		return nil, Errorfln("--config must be defined")
 	}
 
-	_, err := toml.DecodeFile(configPath, &config)
+	var config Config
+	err := LoadYamlFile(configPath, &config)
 	if err != nil {
 		return nil, Errorfln("error decoding config file: %s", err.Error())
 	}
@@ -121,7 +119,7 @@ func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
 	for _, mappingPath := range mappingPaths {
 		Printfln("  mapping path %s", mappingPath)
 		var rawMappings MappingFile
-		_, err := toml.DecodeFile(mappingPath, &rawMappings)
+		err := LoadYamlFile(mappingPath, &rawMappings)
 		if err != nil {
 			hasError = Errorfln("error loading mapping file: %s", err.Error())
 			continue

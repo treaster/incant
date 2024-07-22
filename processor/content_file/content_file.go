@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/treaster/golist"
+	"gopkg.in/yaml.v3"
 )
 
 type context struct {
@@ -66,10 +66,10 @@ func evalOneFile(ctx *context, contentPath string) map[string]any {
 		return nil
 	}
 
-	var origContent map[string]any
-	_, err = toml.Decode(string(origContentBytes), &origContent)
+	var origContent any
+	err = yaml.Unmarshal(origContentBytes, &origContent)
 	if err != nil {
-		ctx.addError("error decoding file: %s", err.Error())
+		ctx.addError("error decoding file %s: %s", contentPath, err.Error())
 		return nil
 	}
 
