@@ -1,16 +1,16 @@
 <html>
     <head>
-        <title>{{ .Data.title }}</title>
+        <title>{{ .title }}</title>
         <link rel="stylesheet" type="text/css" href="static/main.css" />
     </head>
     <body>
-        <div>Some data fields about {{ .Data.title }}</div>
-        <div>{{ .Data.foo }}</div>
-        <div>{{ RenderMarkdown .Data.bar }}</div>
-        <div>{{ .Data.baz }}</div>
+        <div>Some data fields about {{ .title }}</div>
+        <div>{{ .foo }}</div>
+        <div>{{ RenderMarkdown .bar }}</div>
+        <div>{{ .baz }}</div>
         <div>This line is the same for all items!</div>
         <div>
-            <img src="{{ DataUrl "image/png" .Data.thumbnail }}">
+            <img src="{{ DataUrl "image/png" .thumbnail }}">
         </div>
     </body>
 </html>

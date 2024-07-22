@@ -31,7 +31,7 @@ func Load(configPath string) (Processor, bool) {
 
 	config.StaticRoot = filepath.Clean(config.StaticRoot) + "/"
 	config.TemplatesRoot = filepath.Clean(config.TemplatesRoot) + "/"
-	config.SiteDataFile = filepath.Clean(config.SiteDataFile) + "/"
+	config.ContentRoot = filepath.Clean(config.ContentRoot) + "/"
 	config.OutputRoot = filepath.Clean(config.OutputRoot) + "/"
 
 	if config.MappingFile == "" || filepath.Base(config.MappingFile) != config.MappingFile {
@@ -100,7 +100,7 @@ func (p *processor) LoadSiteContent() (any, bool) {
 	Printfln("\nLOADING SITE CONTENT...")
 
 	hasError := false
-	contentRootToml := filepath.Join(p.siteRoot, p.config.SiteDataFile)
+	contentRootToml := filepath.Join(p.siteRoot, p.config.ContentRoot, p.config.SiteDataFile)
 	siteData, errors := content_file.EvalContentFile(os.ReadFile, contentRootToml)
 	if len(errors) > 0 {
 		return nil, false
@@ -113,22 +113,24 @@ func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
 	Printfln("\nLOADING MAPPING FILES...")
 
 	hasError := false
-	mappingPaths := FindFilesWithName(filepath.Join(p.siteRoot, p.config.SiteDataFile), p.config.MappingFile)
+	mappingPaths := FindFilesWithName(filepath.Join(p.siteRoot, p.config.ContentRoot), p.config.MappingFile)
 
 	var allMappings []MappingForTemplate
 	for _, mappingPath := range mappingPaths {
 		Printfln("  mapping path %s", mappingPath)
-		var rawMappings MappingFile
+		var rawMappings []RawMapping
 		err := LoadYamlFile(mappingPath, &rawMappings)
 		if err != nil {
-			hasError = Errorfln("error loading mapping file: %s", err.Error())
+			hasError = Errorfln("error loading mapping file %s: %s", mappingPath, err.Error())
 			continue
 		}
 
-		cleanPath := SafeCutPrefix(mappingPath, filepath.Join(p.siteRoot, p.config.SiteDataFile))
+		Printfln("found mappings %+v", rawMappings)
+
+		cleanPath := SafeCutPrefix(mappingPath, filepath.Join(p.siteRoot, p.config.ContentRoot))
 		cleanPath, _ = TrimExt(cleanPath)
 
-		for i, rawMapping := range rawMappings.Mapping {
+		for i, rawMapping := range rawMappings {
 			Printfln("    found mapping for types %+v onto template %q", rawMapping.Selector, rawMapping.Template)
 
 			AssertNonEmpty(rawMapping.Template)
@@ -169,6 +171,7 @@ func (p *processor) ProcessContent(tmpl *template.Template, allMappings []Mappin
 
 	hasError := false
 	for _, mapping := range allMappings {
+		Printfln("    processOneMapping")
 		newError := p.processOneMapping(tmpl, mapping, siteContent)
 		hasError = hasError || newError
 	}
@@ -198,7 +201,9 @@ func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingFo
 	}
 	if mapping.PerMatchOutput != "" {
 		for _, item := range itemMatches {
+			Printfln("PRE XXX %q %+v", mapping.PerMatchOutput, item)
 			itemName := EvalOutputBase(mapping.PerMatchOutput, item)
+			Printfln("XXX %q %+v, %q", mapping.PerMatchOutput, item, itemName)
 			newError := p.executeOneTemplate(oneTmpl, item, itemName)
 			hasError = hasError || newError
 		}
@@ -225,6 +230,7 @@ func (p *processor) executeOneTemplate(tmpl *template.Template, tmplData any, ou
 		return Errorfln("error creating output directory: %s", err.Error())
 	}
 
+	Printfln("    Writing file %s", outputPath)
 	err = os.WriteFile(outputPath, output.Bytes(), 0644)
 	if err != nil {
 		return Errorfln("error writing output file: %s", err.Error())

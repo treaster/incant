@@ -3,20 +3,21 @@ package processor
 import "text/template"
 
 type Config struct {
+	ContentRoot   string `yaml:"ContentRoot"`
+	SiteDataFile  string `yaml:"SiteDataFile"`
 	MappingFile   string `yaml:"MappingFile"`
 	StaticRoot    string `yaml:"StaticRoot"`
 	TemplatesRoot string `yaml:"TemplatesRoot"`
-	SiteDataFile  string `yaml:"SiteDataFile"`
 	OutputRoot    string `yaml:"OutputRoot"`
 }
 
 type Content map[string]any
 
 type RawMapping struct {
-	SingleOutput   string
-	PerMatchOutput string
-	Template       string
-	Selector       string
+	SingleOutput   string `yaml:"SingleOutput"`
+	PerMatchOutput string `yaml:"PerMatchOutput"`
+	Template       string `yaml:"Template"`
+	Selector       string `yaml:"Selector"`
 }
 
 type MappingForTemplate struct {
@@ -25,10 +26,6 @@ type MappingForTemplate struct {
 	PerMatchOutput string
 	Template       string
 	Selector       string
-}
-
-type MappingFile struct {
-	Mapping []RawMapping
 }
 
 type Processor interface {

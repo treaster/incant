@@ -1,5 +1,6 @@
-MappingFile = "mapping.yaml"
+ContentRoot = "./content"
+SiteDataFile = "site_data.toml"
+MappingFile = "mapping.toml"
 TemplatesRoot = "./templates"
-SiteDataFile = "./content/site_data.yaml"
 StaticRoot = "./static"
 OutputRoot = "./output"

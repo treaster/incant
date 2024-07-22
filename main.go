@@ -35,6 +35,10 @@ func main() {
 		processor.Printfln("ERROR loading mapping files")
 		return
 	}
+	if len(allMappings) == 0 {
+		processor.Printfln("No mapping files found. Aborting.")
+		return
+	}
 
 	hasErrors = proc.ClearExistingOutput()
 	if hasErrors {

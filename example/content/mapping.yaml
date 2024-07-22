@@ -1,7 +1,7 @@
-- single_output: "index"
-  template: "index.html"
-  selector: '.[] | select(.tag=="projects_index")'
+- SingleOutput: "index"
+  Template: "index.html"
+  Selector: '.[] | select(.tag=="projects_index")'
 
-- per_match_output: "jq:.title"
-  template: "item.html"
-  selector: '.[] | select(.tag=="testitem")'
+- PerMatchOutput: "jq:.title"
+  Template: "item.html"
+  Selector: '.[] | select(.tag=="testitem")'
