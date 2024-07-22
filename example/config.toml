@@ -1,5 +1,5 @@
 MappingFile = "mapping.toml"
 TemplatesRoot = "./templates"
-ContentRoot = "./content"
+SiteDataFile = "./content/site_data.toml"
 StaticRoot = "./static"
 OutputRoot = "./output"

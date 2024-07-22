@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/itchyny/gojq"
@@ -111,6 +110,7 @@ func AssertNonEmpty(s string) {
 	}
 }
 
+/*
 func MakeItemSort(sortKey string) func(Item, Item) int {
 	return func(a, b Item) int {
 		keyA, hasKey := a.Data[sortKey]
@@ -144,6 +144,7 @@ func MakeItemSort(sortKey string) func(Item, Item) int {
 		}
 	}
 }
+*/
 
 type sortable interface {
 	uint | uint8 | uint16 | uint32 | uint64 | int | int8 | int16 | int32 | int64 | float32 | float64 | string
@@ -166,7 +167,7 @@ func FilterBySelector(selector string, siteData map[string]any) []any {
 	}
 
 	var matches []any
-	iter := query.Run(selector, siteData)
+	iter := query.Run(siteData)
 	for {
 		v, ok := iter.Next()
 		if !ok {
@@ -176,7 +177,7 @@ func FilterBySelector(selector string, siteData map[string]any) []any {
 		err, isErr := v.(error)
 		if isErr {
 			haltErr, isHalt := err.(*gojq.HaltError)
-			if isHalt && err.Value() == nil {
+			if isHalt && haltErr.Value() == nil {
 				break
 			}
 
@@ -187,4 +188,50 @@ func FilterBySelector(selector string, siteData map[string]any) []any {
 	}
 
 	return matches
+}
+
+func EvalOutputBase(expr string, itemData any) string {
+	parts := strings.SplitN(expr, ":", 2)
+	if len(parts) != 2 {
+		panic("Output requires a colon-delimited expression")
+	}
+
+	exprType := parts[0]
+	outputExpr := parts[1]
+
+	switch exprType {
+	case "jq":
+		query, err := gojq.Parse(outputExpr)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		var matches []any
+		iter := query.Run(itemData)
+		for {
+			v, ok := iter.Next()
+			if !ok {
+				break
+			}
+
+			err, isErr := v.(error)
+			if isErr {
+				haltErr, isHalt := err.(*gojq.HaltError)
+				if isHalt && haltErr.Value() == nil {
+					break
+				}
+
+				panic(fmt.Sprintf("gojq error: %q", err.Error()))
+			}
+
+			matches = append(matches, v)
+		}
+
+		if len(matches) != 1 {
+			panic(fmt.Sprintf("bad matches for query %q -> %+v", expr, matches))
+		}
+		return matches[0].(string)
+	default:
+		panic(fmt.Sprintf("unexpected expr type %s", exprType))
+	}
 }

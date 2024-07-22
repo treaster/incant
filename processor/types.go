@@ -6,23 +6,25 @@ type Config struct {
 	MappingFile   string
 	StaticRoot    string
 	TemplatesRoot string
-	ContentFile   string
+	SiteDataFile  string
 	OutputRoot    string
 }
 
 type Content map[string]any
 
 type RawMapping struct {
-	OutputBase string
-	Template   string
-	Selector   string
+	SingleOutput   string
+	PerMatchOutput string
+	Template       string
+	Selector       string
 }
 
 type MappingForTemplate struct {
-	MappingPath string
-	OutputBase  string
-	Template    string
-	Selector    string
+	MappingPath    string
+	SingleOutput   string
+	PerMatchOutput string
+	Template       string
+	Selector       string
 }
 
 type MappingFile struct {
@@ -31,9 +33,9 @@ type MappingFile struct {
 
 type Processor interface {
 	LoadTemplates() (*template.Template, bool)
-	LoadContentItems() ([]Item, bool)
+	LoadSiteContent() (map[string]any, bool)
 	LoadMappings() ([]MappingForTemplate, bool)
 	ClearExistingOutput() bool
-	ProcessContent(*template.Template, []MappingForTemplate, []Item) bool
+	ProcessContent(*template.Template, []MappingForTemplate, map[string]any) bool
 	CopyStatic() bool
 }

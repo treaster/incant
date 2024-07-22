@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
-	"strings"
 	"text/template"
 
 	"github.com/BurntSushi/toml"
+	"github.com/treaster/ssg/processor/content_file"
 )
 
 type processor struct {
@@ -34,7 +33,7 @@ func Load(configPath string) (Processor, bool) {
 
 	config.StaticRoot = filepath.Clean(config.StaticRoot) + "/"
 	config.TemplatesRoot = filepath.Clean(config.TemplatesRoot) + "/"
-	config.ContentRoot = filepath.Clean(config.ContentRoot) + "/"
+	config.SiteDataFile = filepath.Clean(config.SiteDataFile) + "/"
 	config.OutputRoot = filepath.Clean(config.OutputRoot) + "/"
 
 	if config.MappingFile == "" || filepath.Base(config.MappingFile) != config.MappingFile {
@@ -99,86 +98,24 @@ func (p *processor) LoadTemplates() (*template.Template, bool) {
 	return tmpl, hasError
 }
 
-func (p *processor) LoadContentItems() ([]Item, bool) {
-	Printfln("\nLOADING CONTENT FILES...")
+func (p *processor) LoadSiteContent() (map[string]any, bool) {
+	Printfln("\nLOADING SITE CONTENT...")
 
 	hasError := false
-	pathPrefix := filepath.Join(p.siteRoot, p.config.ContentRoot)
-	contentFiles := FindFiles(pathPrefix)
-
-	var loadedItems []Item
-	for _, contentPath := range contentFiles {
-		if filepath.Base(contentPath) == p.config.MappingFile {
-			continue
-		}
-
-		Printfln("Processing content file: %s...", contentPath)
-
-		var rawContent RawContentFile
-		_, err := toml.DecodeFile(contentPath, &rawContent)
-		if err != nil {
-			newError := Errorfln("  error decoding TOML: %s", err.Error())
-			hasError = hasError || newError
-			continue
-		}
-
-		relativeDirPath := SafeCutPrefix(contentPath, pathPrefix+"/")
-		relativeDirPath = filepath.Dir(relativeDirPath)
-
-		for itemName, itemData := range rawContent.Item {
-			Printfln("  found %s", itemName)
-			if len(itemData) == 0 {
-				panic("empty itemdata")
-			}
-			loadedItems = append(loadedItems, Item{
-				itemName,
-				relativeDirPath,
-				itemData,
-			})
-		}
+	contentRootToml := filepath.Join(p.siteRoot, p.config.SiteDataFile)
+	siteData, errors := content_file.EvalContentFile(os.ReadFile, contentRootToml)
+	if len(errors) > 0 {
+		return nil, false
 	}
 
-	type rewriteTuple struct {
-		key      string
-		newValue []Item
-	}
-
-	// Find embeded item-selection queries and rewrite them to be the actual items instead of the query string.
-	for i, _ := range loadedItems {
-		item := &loadedItems[i]
-
-		var rewrites []rewriteTuple
-		for k, v := range item.Data {
-			rv := reflect.ValueOf(v)
-			if rv.Kind() != reflect.String {
-				continue
-			}
-
-			vs := rv.String()
-			if !strings.HasPrefix(vs, "selector:") {
-				continue
-			}
-
-			vs = SafeCutPrefix(vs, "selector:")
-
-			selectedItems := FilterBySelector(vs, loadedItems)
-			rewrites = append(rewrites, rewriteTuple{k, selectedItems})
-		}
-
-		for _, rewrite := range rewrites {
-			Printfln("rewrite %q -> %+v", rewrite.key, rewrite.newValue)
-			item.Data[rewrite.key] = rewrite.newValue
-		}
-	}
-
-	return loadedItems, hasError
+	return siteData, hasError
 }
 
 func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
 	Printfln("\nLOADING MAPPING FILES...")
 
 	hasError := false
-	mappingPaths := FindFilesWithName(filepath.Join(p.siteRoot, p.config.ContentRoot), p.config.MappingFile)
+	mappingPaths := FindFilesWithName(filepath.Join(p.siteRoot, p.config.SiteDataFile), p.config.MappingFile)
 
 	var allMappings []MappingForTemplate
 	for _, mappingPath := range mappingPaths {
@@ -190,17 +127,24 @@ func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
 			continue
 		}
 
-		cleanPath := SafeCutPrefix(mappingPath, filepath.Join(p.siteRoot, p.config.ContentRoot))
+		cleanPath := SafeCutPrefix(mappingPath, filepath.Join(p.siteRoot, p.config.SiteDataFile))
 		cleanPath, _ = TrimExt(cleanPath)
 
-		for _, rawMapping := range rawMappings.Mapping {
+		for i, rawMapping := range rawMappings.Mapping {
 			Printfln("    found mapping for types %+v onto template %q", rawMapping.Selector, rawMapping.Template)
 
 			AssertNonEmpty(rawMapping.Template)
 
+			if (rawMapping.SingleOutput == "" && rawMapping.PerMatchOutput == "") ||
+				(rawMapping.SingleOutput != "" && rawMapping.PerMatchOutput != "") {
+				hasError = Errorfln("exactly one of single_output or per_match_output must be set on mapping %s %i", mappingPath, i)
+				continue
+			}
+
 			forTemplate := MappingForTemplate{
 				cleanPath,
-				rawMapping.OutputBase,
+				rawMapping.SingleOutput,
+				rawMapping.PerMatchOutput,
 				rawMapping.Template,
 				rawMapping.Selector,
 			}
@@ -222,18 +166,18 @@ func (p *processor) ClearExistingOutput() bool {
 	return false
 }
 
-func (p *processor) ProcessContent(tmpl *template.Template, allMappings []MappingForTemplate, allItems []Item) bool {
+func (p *processor) ProcessContent(tmpl *template.Template, allMappings []MappingForTemplate, siteContent map[string]any) bool {
 	Printfln("\nEXECUTING CONTENT + TEMPLATES...")
 
 	hasError := false
 	for _, mapping := range allMappings {
-		newError := p.processOneMapping(tmpl, mapping, allItems)
+		newError := p.processOneMapping(tmpl, mapping, siteContent)
 		hasError = hasError || newError
 	}
 	return hasError
 }
 
-func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingForTemplate, allItems []Item) bool {
+func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingForTemplate, siteContent map[string]any) bool {
 	templateName := mapping.Template
 	if templateName == "" {
 		Errorfln("mapping file must contain key 'config.template', which defines which template file should be used.")
@@ -245,14 +189,21 @@ func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingFo
 		panic(fmt.Sprintf("error: template %q not found", templateName))
 	}
 
-	itemMatches := FilterBySelector(mapping.Selector, allItems)
+	itemMatches := FilterBySelector(mapping.Selector, siteContent)
 
 	hasError := false
 
 	Printfln("selected %d items", len(itemMatches))
-	for _, item := range itemMatches {
-		newError := p.executeOneTemplate(oneTmpl, item, item.Name)
+	if mapping.SingleOutput != "" {
+		newError := p.executeOneTemplate(oneTmpl, itemMatches, mapping.SingleOutput)
 		hasError = hasError || newError
+	}
+	if mapping.PerMatchOutput != "" {
+		for _, item := range itemMatches {
+			itemName := EvalOutputBase(mapping.PerMatchOutput, item)
+			newError := p.executeOneTemplate(oneTmpl, item, itemName)
+			hasError = hasError || newError
+		}
 	}
 
 	return hasError

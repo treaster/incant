@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/treaster.net/ssg/processor"
+	"github.com/treaster/ssg/processor"
 )
 
 func main() {
@@ -24,9 +24,9 @@ func main() {
 		return
 	}
 
-	allItems, hasErrors := proc.LoadContentItems()
+	siteContent, hasErrors := proc.LoadSiteContent()
 	if hasErrors {
-		processor.Printfln("ERROR loading content files")
+		processor.Printfln("ERROR loading site content")
 		return
 	}
 
@@ -42,15 +42,15 @@ func main() {
 		return
 	}
 
-	hasErrors = proc.ProcessContent(tmpl, allMappings, allItems)
+	hasErrors = proc.ProcessContent(tmpl, allMappings, siteContent)
 	if hasErrors {
-		processor.Printfln("ERROR processing content files")
+		processor.Printfln("ERROR processing mapping + site content")
 		return
 	}
 
 	hasErrors = proc.CopyStatic()
 	if hasErrors {
-		processor.Printfln("ERROR loading content files")
+		processor.Printfln("ERROR copying static files")
 		return
 	}
 }

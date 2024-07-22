@@ -3,20 +3,19 @@ package content_file
 import (
 	"fmt"
 	"reflect"
-	"sort"
 	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/treaster/golist"
 )
 
-type Content map[string]any
-
 type context struct {
-	allContents map[string]Content
-	inProgress  *golist.Set[string]
-	allResults  map[string]Content
-	stack       []string
-	errors      []error
+	fileLoader func(string) ([]byte, error)
+
+	inProgress *golist.Set[string]
+	allResults map[string]map[string]any
+	stack      []string
+	errors     []error
 }
 
 func (ctx *context) addError(s string, args ...any) {
@@ -25,24 +24,20 @@ func (ctx *context) addError(s string, args ...any) {
 	ctx.errors = append(ctx.errors, fmt.Errorf("%s (%s)", errorStr, stackStr))
 }
 
-func EvalContents(allContents map[string]Content) (map[string]Content, []error) {
-	allPaths := make([]string, 0, len(allContents))
-	for contentPath, _ := range allContents {
-		allPaths = append(allPaths, contentPath)
-	}
-	sort.Strings(allPaths)
+func EvalContentFile(
+	fileLoader func(string) ([]byte, error),
+	filePath string) (
+	map[string]any, []error) {
 
 	ctx := context{
-		allContents,
+		fileLoader,
 		golist.NewSet[string](),
-		map[string]Content{},
+		map[string]map[string]any{},
 		[]string{},
 		nil,
 	}
 
-	for _, contentPath := range allPaths {
-		evalOneFile(&ctx, contentPath)
-	}
+	result := evalOneFile(&ctx, filePath)
 
 	if len(ctx.errors) > 0 {
 		for _, err := range ctx.errors {
@@ -51,24 +46,31 @@ func EvalContents(allContents map[string]Content) (map[string]Content, []error) 
 		return nil, ctx.errors
 	}
 
-	return ctx.allResults, ctx.errors
+	return result, ctx.errors
 }
 
 func evalOneFile(ctx *context, contentPath string) map[string]any {
 	if ctx.inProgress.Has(contentPath) {
 		ctx.addError("circular reference with %q", contentPath)
-		return nil // map[string]any{}
+		return nil
 	}
 
 	fileContent, isProcessed := ctx.allResults[contentPath]
 	if isProcessed {
-		return map[string]any(fileContent)
+		return fileContent
 	}
 
-	origContent, hasFile := ctx.allContents[contentPath]
-	if !hasFile {
-		ctx.addError("unrecognized content file %q", contentPath)
-		return nil // map[string]any{}
+	origContentBytes, err := ctx.fileLoader(contentPath)
+	if err != nil {
+		ctx.addError("unable to load content file %q: %s", contentPath, err.Error())
+		return nil
+	}
+
+	var origContent map[string]any
+	_, err = toml.Decode(string(origContentBytes), &origContent)
+	if err != nil {
+		ctx.addError("error decoding file: %s", err.Error())
+		return nil
 	}
 
 	ctx.inProgress.Add(contentPath)
@@ -76,7 +78,7 @@ func evalOneFile(ctx *context, contentPath string) map[string]any {
 	ctx.inProgress.Remove(contentPath)
 
 	mapValue := value.(map[string]any)
-	ctx.allResults[contentPath] = Content(mapValue)
+	ctx.allResults[contentPath] = mapValue
 
 	return mapValue
 }
