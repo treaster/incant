@@ -4,6 +4,7 @@ go 1.21.1
 
 require (
 	github.com/BurntSushi/toml v1.4.0
+	github.com/hjson/hjson-go/v4 v4.4.0
 	github.com/itchyny/gojq v0.12.16
 	github.com/stretchr/testify v1.9.0
 	github.com/treaster/golist v0.0.0-00010101000000-000000000000

@@ -24,7 +24,7 @@ func Load(configPath string) (Processor, bool) {
 	}
 
 	var config Config
-	err := LoadYamlFile(configPath, &config)
+	err := LoadFile(configPath, &config)
 	if err != nil {
 		return nil, Errorfln("error decoding config file: %s", err.Error())
 	}
@@ -119,7 +119,7 @@ func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
 	for _, mappingPath := range mappingPaths {
 		Printfln("  mapping path %s", mappingPath)
 		var rawMappings []RawMapping
-		err := LoadYamlFile(mappingPath, &rawMappings)
+		err := LoadFile(mappingPath, &rawMappings)
 		if err != nil {
 			hasError = Errorfln("error loading mapping file %s: %s", mappingPath, err.Error())
 			continue
