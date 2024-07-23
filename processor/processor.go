@@ -194,16 +194,13 @@ func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingFo
 
 	hasError := false
 
-	Printfln("selected %d items", len(itemMatches))
 	if mapping.SingleOutput != "" {
 		newError := p.executeOneTemplate(oneTmpl, itemMatches, mapping.SingleOutput)
 		hasError = hasError || newError
 	}
 	if mapping.PerMatchOutput != "" {
 		for _, item := range itemMatches {
-			Printfln("PRE XXX %q %+v", mapping.PerMatchOutput, item)
 			itemName := EvalOutputBase(mapping.PerMatchOutput, item)
-			Printfln("XXX %q %+v, %q", mapping.PerMatchOutput, item, itemName)
 			newError := p.executeOneTemplate(oneTmpl, item, itemName)
 			hasError = hasError || newError
 		}

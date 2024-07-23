@@ -1,6 +1,6 @@
 - SingleOutput: "index"
   Template: "index.html"
-  Selector: '.[] | select(.tag=="projects_index")'
+  Selector: '.[] | select(.tag=="testitem")'
 
 - PerMatchOutput: "jq:.title"
   Template: "item.html"

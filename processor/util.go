@@ -188,6 +188,7 @@ func FilterBySelector(selector string, siteData any) []any {
 		matches = append(matches, v)
 	}
 
+	Printfln("SELECTOR %q found %d matches", selector, len(matches))
 	return matches
 }
 
