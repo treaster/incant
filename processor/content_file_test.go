@@ -1,11 +1,11 @@
-package content_file_test
+package processor_test
 
 import (
 	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/treaster/ssg/processor/content_file"
+	"github.com/treaster/ssg/processor"
 
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +36,7 @@ func TestEvalContentFile(t *testing.T) {
 			"key2": "abcde",
 		}
 
-		actual, errs := content_file.EvalContentFile(makeFileLoader(input), "file1")
+		actual, errs := processor.EvalContentFile(makeFileLoader(input), "file1")
 		require.Equal(t, 0, len(errs))
 		require.Equal(t, expected, actual)
 	}
@@ -62,7 +62,7 @@ func TestEvalContentFile(t *testing.T) {
 			},
 		}
 
-		actual, errs := content_file.EvalContentFile(makeFileLoader(input), "file1")
+		actual, errs := processor.EvalContentFile(makeFileLoader(input), "file1")
 		require.Equal(t, 0, len(errs))
 		require.Equal(t, expected, actual)
 	}
@@ -98,7 +98,7 @@ func TestEvalContentFile(t *testing.T) {
 			"key6": "abcde",
 		}
 
-		actual, errs := content_file.EvalContentFile(makeFileLoader(input), "file2")
+		actual, errs := processor.EvalContentFile(makeFileLoader(input), "file2")
 		require.Equal(t, 0, len(errs))
 		require.Equal(t, expected, actual)
 	}
@@ -116,7 +116,7 @@ func TestEvalContentFile(t *testing.T) {
             `,
 		}
 
-		_, errs := content_file.EvalContentFile(makeFileLoader(input), "file1")
+		_, errs := processor.EvalContentFile(makeFileLoader(input), "file1")
 		expected := []error{
 			errors.New(`circular reference with "file1" (stack: [file:file1 -> key2 -> * -> file:file2 -> key4 -> *])`),
 		}
@@ -142,7 +142,7 @@ func TestEvalContentFile(t *testing.T) {
 					},
 				}
 
-				actual, errs := content_file.EvalContentFile(makeFileLoader(input), "file1")
+				actual, errs := processor.EvalContentFile(makeFileLoader(input), "file1")
 				require.Equal(t, 0, len(errs))
 				require.Equal(t, expected, actual)
 			}

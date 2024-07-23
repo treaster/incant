@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
-
-	"github.com/treaster/ssg/processor/content_file"
 )
 
 type processor struct {
@@ -101,7 +99,7 @@ func (p *processor) LoadSiteContent() (any, bool) {
 
 	hasError := false
 	contentRootToml := filepath.Join(p.siteRoot, p.config.ContentRoot, p.config.SiteDataFile)
-	siteData, errors := content_file.EvalContentFile(os.ReadFile, contentRootToml)
+	siteData, errors := EvalContentFile(os.ReadFile, contentRootToml)
 	if len(errors) > 0 {
 		return nil, false
 	}

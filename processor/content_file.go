@@ -1,4 +1,4 @@
-package content_file
+package processor
 
 import (
 	"fmt"
@@ -120,7 +120,7 @@ func evalValue(ctx *context, stackKey string, contentValue reflect.Value) any {
 		s := contentValue.String()
 		switch {
 		case strings.HasPrefix(s, "file:"):
-			filePath := safeCutPrefix(s, "file:")
+			filePath := SafeCutPrefix(s, "file:")
 			return evalOneFile(ctx, filePath)
 		default:
 			return s
@@ -128,13 +128,4 @@ func evalValue(ctx *context, stackKey string, contentValue reflect.Value) any {
 	default:
 		return contentValue.Interface()
 	}
-}
-
-// TODO(treaster): Rely on the implementation in processor/util.go
-func safeCutPrefix(s string, prefix string) string {
-	s, hasPrefix := strings.CutPrefix(s, prefix)
-	if !hasPrefix {
-		panic("Whaa?")
-	}
-	return s
 }
