@@ -9,20 +9,23 @@ import (
 )
 
 type processor struct {
+	loader     FileLoader
 	configPath string
 	siteRoot   string
 	config     Config
 }
 
-func Load(configPath string) (Processor, bool) {
+func Load(readFileFn func(string) ([]byte, error), configPath string) (Processor, bool) {
 	Printfln("\nLOADING CONFIG FILE...")
 
 	if configPath == "" {
 		return nil, Errorfln("--config must be defined")
 	}
 
+	loader := FileLoader{readFileFn}
+
 	var config Config
-	err := LoadFile(configPath, &config)
+	err := loader.LoadFile(configPath, &config)
 	if err != nil {
 		return nil, Errorfln("error decoding config file: %s", err.Error())
 	}
@@ -39,6 +42,7 @@ func Load(configPath string) (Processor, bool) {
 
 	siteRoot := filepath.Dir(configPath) + "/"
 	return &processor{
+		loader,
 		configPath,
 		siteRoot,
 		config,
@@ -99,7 +103,7 @@ func (p *processor) LoadSiteContent() (any, bool) {
 
 	hasError := false
 	contentRootToml := filepath.Join(p.siteRoot, p.config.ContentRoot, p.config.SiteDataFile)
-	siteData, errors := EvalContentFile(os.ReadFile, contentRootToml)
+	siteData, errors := EvalContentFile(p.loader, contentRootToml)
 	if len(errors) > 0 {
 		return nil, false
 	}
@@ -117,7 +121,7 @@ func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
 	for _, mappingPath := range mappingPaths {
 		Printfln("  mapping path %s", mappingPath)
 		var rawMappings []RawMapping
-		err := LoadFile(mappingPath, &rawMappings)
+		err := p.loader.LoadFile(mappingPath, &rawMappings)
 		if err != nil {
 			hasError = Errorfln("error loading mapping file %s: %s", mappingPath, err.Error())
 			continue

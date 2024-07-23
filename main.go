@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"github.com/treaster/ssg/processor"
 )
@@ -12,7 +13,7 @@ func main() {
 
 	flag.Parse()
 
-	proc, hasErrors := processor.Load(configPath)
+	proc, hasErrors := processor.Load(os.ReadFile, configPath)
 	if hasErrors {
 		processor.Printfln("ERROR loading config")
 		return

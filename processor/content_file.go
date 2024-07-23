@@ -6,11 +6,10 @@ import (
 	"strings"
 
 	"github.com/treaster/golist"
-	"gopkg.in/yaml.v3"
 )
 
 type context struct {
-	fileLoader func(string) ([]byte, error)
+	loader FileLoader
 
 	inProgress *golist.Set[string]
 	allResults map[string]any
@@ -24,13 +23,9 @@ func (ctx *context) addError(s string, args ...any) {
 	ctx.errors = append(ctx.errors, fmt.Errorf("%s (%s)", errorStr, stackStr))
 }
 
-func EvalContentFile(
-	fileLoader func(string) ([]byte, error),
-	filePath string) (
-	any, []error) {
-
+func EvalContentFile(loader FileLoader, filePath string) (any, []error) {
 	ctx := context{
-		fileLoader,
+		loader,
 		golist.NewSet[string](),
 		map[string]any{},
 		[]string{},
@@ -60,16 +55,10 @@ func evalOneFile(ctx *context, contentPath string) any {
 		return fileContent
 	}
 
-	origContentBytes, err := ctx.fileLoader(contentPath)
+	var origContent any
+	err := ctx.loader.LoadFile(contentPath, &origContent)
 	if err != nil {
 		ctx.addError("unable to load content file %q: %s", contentPath, err.Error())
-		return nil
-	}
-
-	var origContent any
-	err = yaml.Unmarshal(origContentBytes, &origContent)
-	if err != nil {
-		ctx.addError("error decoding file %s: %s", contentPath, err.Error())
 		return nil
 	}
 

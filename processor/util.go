@@ -8,11 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/BurntSushi/toml"
-	"github.com/hjson/hjson-go/v4"
 	"github.com/itchyny/gojq"
-	"github.com/treaster/ssg/processor/json5"
-	"gopkg.in/yaml.v3"
 )
 
 func FindFiles(fileRoot string) []string {
@@ -238,28 +234,5 @@ func EvalOutputBase(expr string, itemData any) string {
 		return matches[0].(string)
 	default:
 		panic(fmt.Sprintf("unexpected expr type %s", exprType))
-	}
-}
-
-func LoadFile(s string, output any) error {
-	ext := filepath.Ext(s)
-
-	fileBytes, err := os.ReadFile(s)
-	if err != nil {
-		return err
-	}
-
-	switch ext {
-	case ".yaml":
-		return yaml.Unmarshal(fileBytes, output)
-	case ".toml":
-		_, err := toml.Decode(string(fileBytes), output)
-		return err
-	case ".json5":
-		return json5.Unmarshal(fileBytes, output)
-	case ".hjson":
-		return hjson.Unmarshal(fileBytes, output)
-	default:
-		panic(fmt.Sprintf("Unknown extension on file path %q", s))
 	}
 }

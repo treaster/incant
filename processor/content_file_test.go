@@ -10,14 +10,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makeFileLoader(data map[string]string) func(string) ([]byte, error) {
-	return func(filename string) ([]byte, error) {
-		s, hasFile := data[filename]
-		if !hasFile {
-			return nil, fmt.Errorf("no file named %q", filename)
-		}
+func makeFileLoader(data map[string]string) processor.FileLoader {
+	return processor.FileLoader{
+		func(filename string) ([]byte, error) {
+			s, hasFile := data[filename]
+			if !hasFile {
+				return nil, fmt.Errorf("no file named %q", filename)
+			}
 
-		return []byte(s), nil
+			return []byte(s), nil
+		},
 	}
 }
 
@@ -25,7 +27,7 @@ func TestEvalContentFile(t *testing.T) {
 	// Simple case
 	{
 		input := map[string]string{
-			"file1": `
+			"file1.yaml": `
             key1: 10
             key2: "abcde"
             `,
@@ -36,7 +38,7 @@ func TestEvalContentFile(t *testing.T) {
 			"key2": "abcde",
 		}
 
-		actual, errs := processor.EvalContentFile(makeFileLoader(input), "file1")
+		actual, errs := processor.EvalContentFile(makeFileLoader(input), "file1.yaml")
 		require.Equal(t, 0, len(errs))
 		require.Equal(t, expected, actual)
 	}
@@ -44,11 +46,11 @@ func TestEvalContentFile(t *testing.T) {
 	// With file: reference
 	{
 		input := map[string]string{
-			"file1": `
+			"file1.yaml": `
             key1: 10
-            key2: "file:file2"
+            key2: "file:file2.yaml"
                 `,
-			"file2": `
+			"file2.yaml": `
                 key3: 20
                 key4: "abcde"
                 `,
@@ -62,7 +64,7 @@ func TestEvalContentFile(t *testing.T) {
 			},
 		}
 
-		actual, errs := processor.EvalContentFile(makeFileLoader(input), "file1")
+		actual, errs := processor.EvalContentFile(makeFileLoader(input), "file1.yaml")
 		require.Equal(t, 0, len(errs))
 		require.Equal(t, expected, actual)
 	}
@@ -70,14 +72,14 @@ func TestEvalContentFile(t *testing.T) {
 	// more complicated
 	{
 		input := map[string]string{
-			"file1": `
+			"file1.yaml": `
             key1: 10
             `,
-			"file2": `
+			"file2.yaml": `
             key3:
                 key4:
                 - 5
-                - "file:file1"
+                - "file:file1.yaml"
                 - "fghij"
                 key5: 123
             key6: "abcde"
@@ -98,7 +100,7 @@ func TestEvalContentFile(t *testing.T) {
 			"key6": "abcde",
 		}
 
-		actual, errs := processor.EvalContentFile(makeFileLoader(input), "file2")
+		actual, errs := processor.EvalContentFile(makeFileLoader(input), "file2.yaml")
 		require.Equal(t, 0, len(errs))
 		require.Equal(t, expected, actual)
 	}
@@ -106,19 +108,19 @@ func TestEvalContentFile(t *testing.T) {
 	// With circular file: reference -> error
 	{
 		input := map[string]string{
-			"file1": `
+			"file1.yaml": `
             key1: 10
-            key2: "file:file2"
+            key2: "file:file2.yaml"
             `,
-			"file2": `
+			"file2.yaml": `
             "3": 20
-            key4: "file:file1"
+            key4: "file:file1.yaml"
             `,
 		}
 
-		_, errs := processor.EvalContentFile(makeFileLoader(input), "file1")
+		_, errs := processor.EvalContentFile(makeFileLoader(input), "file1.yaml")
 		expected := []error{
-			errors.New(`circular reference with "file1" (stack: [file:file1 -> key2 -> * -> file:file2 -> key4 -> *])`),
+			errors.New(`circular reference with "file1.yaml" (stack: [file:file1.yaml -> key2 -> * -> file:file2.yaml -> key4 -> *])`),
 		}
 		require.Equal(t, expected, errs)
 	}
@@ -128,7 +130,7 @@ func TestEvalContentFile(t *testing.T) {
 	/*
 			{
 				input := map[string]string{
-					"file1": `
+					"file1.yaml": `
 		            key1: 10
 		            key2:
 		                "10": "abcde"
@@ -142,7 +144,7 @@ func TestEvalContentFile(t *testing.T) {
 					},
 				}
 
-				actual, errs := processor.EvalContentFile(makeFileLoader(input), "file1")
+				actual, errs := processor.EvalContentFile(makeFileLoader(input), "file1.yaml")
 				require.Equal(t, 0, len(errs))
 				require.Equal(t, expected, actual)
 			}
