@@ -1,0 +1,29 @@
+[
+    {
+        title: Item1
+        tag: testitem
+        foo: Foo1
+        bar:
+            '''
+            This is *Markdown* so we can **format** it how we like with ~no extra HTML~.
+            '''
+        baz: Baz1
+        thumbnail: assets/bitlobber.png
+    }
+
+    {
+        title: Item2
+        tag: testitem
+        foo: Foo2
+        bar:
+            '''
+            ```
+            Bar2
+            ```
+            '''
+        baz: Baz2
+        thumbnail: assets/bitlobber.png
+    }
+
+    file:example/content/one_item.yaml
+]

@@ -1,7 +1,7 @@
 {
     ContentRoot: ./content
-    SiteDataFile: site_data.yaml
-    MappingFile: mapping.yaml
+    SiteDataFile: site_data.hjson
+    MappingFile: mapping.hjson
     TemplatesRoot: ./templates
     StaticRoot: ./static
     OutputRoot: ./output

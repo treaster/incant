@@ -1,0 +1,13 @@
+[
+    {
+        SingleOutput: index
+        Template: index.html
+        Selector: '.[] | select(.tag=="testitem")'
+    }
+
+    {
+        PerMatchOutput: jq:.title
+        Template: item.html
+        Selector: '.[] | select(.tag=="testitem")'
+    }
+]
