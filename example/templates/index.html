@@ -6,8 +6,10 @@
     <body>
         <h1>List of Items</h1>
         {{ range $match := .}}
-        <div><a href="{{ $match.title }}.html">{{ $match.title }}</a></div>
+        <div>
+        {{ $match }}
+        </div>
+        <div>-------</div>
         {{ end }}
-        <hrule></hrule>
     </body>
 </html>

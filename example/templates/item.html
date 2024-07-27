@@ -4,11 +4,8 @@
         <link rel="stylesheet" type="text/css" href="static/main.css" />
     </head>
     <body>
-        <div>Some data fields about {{ .title }}</div>
-        <div>{{ .foo }}</div>
-        <div>{{ RenderMarkdown .bar }}</div>
-        <div>{{ .baz }}</div>
-        <div>This line is the same for all items!</div>
+        <h1>{{ .title }}<h1>
+        <div>{{ RenderMarkdown .instructions }}</div>
         <div>
             <img src="{{ DataUrl "image/png" .thumbnail }}">
         </div>

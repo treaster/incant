@@ -2,7 +2,7 @@
     {
         SingleOutput: index
         Template: index.html
-        Selector: '.[] | select(.tag=="testitem")'
+        Selector: '.'
     }
 
     {

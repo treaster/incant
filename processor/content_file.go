@@ -68,6 +68,8 @@ func evalOneFile(ctx *context, contentPath string) any {
 
 	ctx.allResults[contentPath] = value
 
+	Printfln("Loaded data file of kind %q", reflect.ValueOf(value).Kind())
+
 	return value
 }
 
