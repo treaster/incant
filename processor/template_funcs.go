@@ -7,11 +7,17 @@ import (
 	"os"
 
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 )
 
 func RenderMarkdown(input string) (string, error) {
+	md := goldmark.New(
+		// Enables table, strikethrough, linkify, and tasklist markdown features.
+		goldmark.WithExtensions(extension.GFM),
+	)
+
 	var buf bytes.Buffer
-	err := goldmark.Convert([]byte(input), &buf)
+	err := md.Convert([]byte(input), &buf)
 	return buf.String(), err
 }
 

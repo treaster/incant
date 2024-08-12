@@ -1,15 +1,12 @@
 <html>
     <head>
-        <title>Testing Index</title>
+        <title>Recipe Book</title>
         <link rel="stylesheet" type="text/css" href="static/main.css" />
     </head>
     <body>
-        <h1>List of Items</h1>
+        <h1>Recipe Book</h1>
         {{ range $match := .}}
-        <div>
-        {{ $match }}
-        </div>
-        <div>-------</div>
+        <div><a href="/recipes/{{ .shortname }}.html">{{ $match.title }}</a></div>
         {{ end }}
     </body>
 </html>

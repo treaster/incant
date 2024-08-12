@@ -1,13 +1,14 @@
 [
     {
         SingleOutput: index
-        Template: index.html
-        Selector: '.'
+        Template: recipes_index.html
+        Selector: '.recipes[]'
     }
 
     {
-        PerMatchOutput: jq:.title
-        Template: item.html
-        Selector: '.[] | select(.tag=="testitem")'
+        PerMatchOutput: jq:"recipes/" + .shortname
+        Template: recipe.html
+        Selector: '.recipes[]'
+        // Selector: '.[] | select(.tag=="testitem")'
     }
 ]
