@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/treaster/ssg/processor/selector"
+	"github.com/treaster/incant/processor/selector"
 )
 
 type ContextVar struct {

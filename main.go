@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 
-	"github.com/treaster/ssg/processor"
+	"github.com/treaster/incant/processor"
 )
 
 func main() {

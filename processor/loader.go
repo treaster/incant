@@ -6,7 +6,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/hjson/hjson-go/v4"
-	"github.com/treaster/ssg/processor/json5"
+	"github.com/treaster/incant/processor/json5"
 	"gopkg.in/yaml.v3"
 )
 

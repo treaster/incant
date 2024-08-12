@@ -5,13 +5,13 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/treaster/golist"
+	"github.com/treaster/gotl"
 )
 
 type context struct {
 	loader FileLoader
 
-	inProgress *golist.Set[string]
+	inProgress *gotl.Set[string]
 	allResults map[string]any
 	stack      []string
 	errors     []error
@@ -26,7 +26,7 @@ func (ctx *context) addError(s string, args ...any) {
 func EvalContentFile(loader FileLoader, filePath string) (any, []error) {
 	ctx := context{
 		loader,
-		golist.NewSet[string](),
+		gotl.NewSet[string](),
 		map[string]any{},
 		[]string{},
 		nil,

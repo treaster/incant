@@ -53,7 +53,7 @@ func (p *processor) LoadTemplates() (*template.Template, bool) {
 	Printfln("\nLOADING TEMPLATES...")
 
 	tmpl := template.
-		New("ssg").
+		New("incant").
 		Funcs(template.FuncMap{
 			"RenderMarkdown": RenderMarkdown,
 			"DataUrl": func(assetType string, assetPath string) string {
