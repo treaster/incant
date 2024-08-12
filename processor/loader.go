@@ -10,30 +10,49 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func MakeFileLoader(readFileFn func(string) ([]byte, error)) FileLoader {
+	return FileLoader{
+		readFileFn: readFileFn,
+		typesMap: map[string]func([]byte, any) error{
+			".yaml": yaml.Unmarshal,
+			".toml": func(fileBytes []byte, output any) error {
+				_, err := toml.Decode(string(fileBytes), output)
+				return err
+			},
+			".json5": json5.Unmarshal,
+			".hjson": hjson.Unmarshal,
+		},
+	}
+}
+
 type FileLoader struct {
 	// e.g. os.ReadFile
-	ReadFileFn func(string) ([]byte, error)
+	readFileFn func(string) ([]byte, error)
+	typesMap   map[string]func([]byte, any) error
+}
+
+func (l FileLoader) SupportsFormat(s string) bool {
+	ext := filepath.Ext(s)
+	_, hasFormat := l.typesMap[ext]
+	return hasFormat
+}
+
+func (l FileLoader) LoadFileAsBytes(s string) ([]byte, error) {
+	return l.readFileFn(s)
 }
 
 func (l FileLoader) LoadFile(s string, output any) error {
 	ext := filepath.Ext(s)
 
-	fileBytes, err := l.ReadFileFn(s)
+	fileBytes, err := l.readFileFn(s)
 	if err != nil {
 		return err
 	}
 
-	switch ext {
-	case ".yaml":
-		return yaml.Unmarshal(fileBytes, output)
-	case ".toml":
-		_, err := toml.Decode(string(fileBytes), output)
-		return err
-	case ".json5":
-		return json5.Unmarshal(fileBytes, output)
-	case ".hjson":
-		return hjson.Unmarshal(fileBytes, output)
-	default:
+	fn, hasFormat := l.typesMap[ext]
+	if !hasFormat {
 		panic(fmt.Sprintf("Unknown extension on file path %q", s))
 	}
+
+	return fn(fileBytes, output)
 }

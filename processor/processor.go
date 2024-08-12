@@ -22,7 +22,7 @@ func Load(readFileFn func(string) ([]byte, error), configPath string) (Processor
 		return nil, Errorfln("--config must be defined")
 	}
 
-	loader := FileLoader{readFileFn}
+	loader := MakeFileLoader(readFileFn)
 
 	var config Config
 	err := loader.LoadFile(configPath, &config)
@@ -245,6 +245,7 @@ func (p *processor) CopyStatic() bool {
 
 	prefix := filepath.Join(p.siteRoot, p.config.StaticRoot)
 	staticFiles := FindFiles(prefix)
+	Printfln("copying %d static files", len(staticFiles))
 	for _, staticFile := range staticFiles {
 		partialPath := SafeCutPrefix(staticFile, prefix)
 
@@ -257,6 +258,7 @@ func (p *processor) CopyStatic() bool {
 			continue
 		}
 
+		Printfln("    copy %s to %s", staticFile, outPath)
 		err = Copy(staticFile, outPath)
 		if err != nil {
 			Printfln("error copying file %s to %s: %s", staticFile, outPath, err.Error())

@@ -32,7 +32,7 @@ func EvalContentFile(loader FileLoader, filePath string) (any, []error) {
 		nil,
 	}
 
-	result := evalOneFile(&ctx, filePath)
+	result := evalOneFile(&ctx, filePath, false)
 
 	if len(ctx.errors) > 0 {
 		for _, err := range ctx.errors {
@@ -44,7 +44,7 @@ func EvalContentFile(loader FileLoader, filePath string) (any, []error) {
 	return result, ctx.errors
 }
 
-func evalOneFile(ctx *context, contentPath string) any {
+func evalOneFile(ctx *context, contentPath string, allowAsString bool) any {
 	if ctx.inProgress.Has(contentPath) {
 		ctx.addError("circular reference with %q", contentPath)
 		return nil
@@ -55,22 +55,31 @@ func evalOneFile(ctx *context, contentPath string) any {
 		return fileContent
 	}
 
-	var origContent any
-	err := ctx.loader.LoadFile(contentPath, &origContent)
-	if err != nil {
-		ctx.addError("unable to load content file %q: %s", contentPath, err.Error())
-		return nil
+	if allowAsString && !ctx.loader.SupportsFormat(contentPath) {
+		value, err := ctx.loader.LoadFileAsBytes(contentPath)
+		if err != nil {
+			ctx.addError("unable to load content file *as bytes* %q: %s", contentPath, err.Error())
+			return nil
+		}
+		return string(value)
+	} else {
+		var origContent any
+		err := ctx.loader.LoadFile(contentPath, &origContent)
+		if err != nil {
+			ctx.addError("unable to load content file %q: %s", contentPath, err.Error())
+			return nil
+		}
+
+		ctx.inProgress.Add(contentPath)
+		value := evalValue(ctx, fmt.Sprintf("file:%s", contentPath), reflect.ValueOf(origContent))
+		ctx.inProgress.Remove(contentPath)
+
+		ctx.allResults[contentPath] = value
+
+		Printfln("Loaded data file of kind %q", reflect.ValueOf(value).Kind())
+
+		return value
 	}
-
-	ctx.inProgress.Add(contentPath)
-	value := evalValue(ctx, fmt.Sprintf("file:%s", contentPath), reflect.ValueOf(origContent))
-	ctx.inProgress.Remove(contentPath)
-
-	ctx.allResults[contentPath] = value
-
-	Printfln("Loaded data file of kind %q", reflect.ValueOf(value).Kind())
-
-	return value
 }
 
 func evalValue(ctx *context, stackKey string, contentValue reflect.Value) any {
@@ -112,7 +121,7 @@ func evalValue(ctx *context, stackKey string, contentValue reflect.Value) any {
 		switch {
 		case strings.HasPrefix(s, "file:"):
 			filePath := SafeCutPrefix(s, "file:")
-			return evalOneFile(ctx, filePath)
+			return evalOneFile(ctx, filePath, true)
 		default:
 			return s
 		}
