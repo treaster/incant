@@ -19,6 +19,3 @@ terraform.tfstate.backup
 *.csr
 *.key
 /_deploy/
-*/griddle_lambda
-*/lambda_list_scores
-*/lambda_push_score
