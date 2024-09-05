@@ -60,10 +60,13 @@ func (p *processor) LoadTemplates() (*template.Template, bool) {
 				fullPath := filepath.Join(p.siteRoot, assetPath)
 				return DataUrl(assetType, fullPath)
 			},
-			"Add":  func(a int, b int) int { return a + b },
-			"Sub":  func(a int, b int) int { return a - b },
-			"Mult": func(a int, b int) int { return a * b },
-			"Div":  func(a int, b int) int { return a / b },
+			"Add":       func(a int, b int) int { return a + b },
+			"Sub":       func(a int, b int) int { return a - b },
+			"Mult":      func(a int, b int) int { return a * b },
+			"Div":       func(a int, b int) int { return a / b },
+			"NowLocal":  NowLocal,
+			"NowUTC":    NowUTC,
+			"NamedArgs": NamedArgs,
 		}).
 		Option("missingkey=error")
 
