@@ -1,8 +1,35 @@
 {
-    ContentRoot: ./content
-    SiteDataFile: site_data.hjson
+    // ContentRoot indicates where all site content is located. Any
+    // content files referenced or imported by SiteContentFile will be
+    // automatically prefixed with this path.
+    ContentRoot: content/
+
+    // SiteContentFile defines the starting point where the site content is
+    // defined. This can be an HJSON, JSON, YAML, or TOML file, with any
+    // arbitrary structure.
+    // Since this is a content file, this path is relative to the ContentRoot.
+    SiteContentFile: site_data.hjson
+
+    // MappingFile defines the relationships between the content
+    // and the templates.
+    // Not sure if this is a good idea, but for now this file is specified
+    // relative to the ContentRoot.
     MappingFile: mapping.hjson
-    TemplatesRoot: ./templates
-    StaticRoot: ./static
+
+    // TemplatesRoot will be recursively searched for files, and any matches
+    // will be parsed as templates. The templates will be named based on their
+    // file paths, relative to this directory. So in this example, a template
+    // located at templates/foo/bar.tmpl will be referred to as "foo/bar.tmpl".
+    TemplatesRoot: templates/
+
+    // Files in StaticRoot are copied wholesale into the OutputRoot directory,
+    // under a subdirectory with the same name. In this example, the files
+    // in static/ will be copied into ./output/static/
+    StaticRoot: static/
+
+    // OutputRoot defines the base directory of where the output files
+    // will be located. All output paths are relative to this location.
+    // It will be created if necessary. All contents will be destroyed
+    // before generating new files.
     OutputRoot: ./output
 }

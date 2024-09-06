@@ -160,14 +160,41 @@ func compare[K sortable](v1 K, v2 K) int {
 	return 0
 }
 
-func FilterBySelector(selector string, siteData any) []any {
-	query, err := gojq.Parse(selector)
+func EvalOutputBase(expr string, itemData any) string {
+	matches := EvalContentExpr(expr, itemData)
+	if len(matches) != 1 {
+		panic(fmt.Sprintf("bad matches for query %q -> %+v", expr, matches))
+	}
+	return matches[0].(string)
+}
+
+func EvalContentExpr(exprWithType string, itemData any) []any {
+	parts := strings.SplitN(exprWithType, ":", 2)
+	if len(parts) != 2 {
+		panic("Output requires a colon-delimited type:expression. Probably you want 'jq:[expression]'")
+	}
+
+	exprType := parts[0]
+	expr := parts[1]
+
+	var matches []any
+	switch exprType {
+	case "jq":
+		matches = evalJqExpr(expr, itemData)
+	default:
+		panic(fmt.Sprintf("unexpected expr type %s", exprType))
+	}
+	return matches
+}
+
+func evalJqExpr(expr string, itemData any) []any {
+	query, err := gojq.Parse(expr)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	var matches []any
-	iter := query.Run(siteData)
+	iter := query.Run(itemData)
 	for {
 		v, ok := iter.Next()
 		if !ok {
@@ -186,53 +213,5 @@ func FilterBySelector(selector string, siteData any) []any {
 
 		matches = append(matches, v)
 	}
-
-	Printfln("SELECTOR %q found %d matches", selector, len(matches))
 	return matches
-}
-
-func EvalOutputBase(expr string, itemData any) string {
-	parts := strings.SplitN(expr, ":", 2)
-	if len(parts) != 2 {
-		panic("Output requires a colon-delimited expression")
-	}
-
-	exprType := parts[0]
-	outputExpr := parts[1]
-
-	switch exprType {
-	case "jq":
-		query, err := gojq.Parse(outputExpr)
-		if err != nil {
-			panic(err.Error())
-		}
-
-		var matches []any
-		iter := query.Run(itemData)
-		for {
-			v, ok := iter.Next()
-			if !ok {
-				break
-			}
-
-			err, isErr := v.(error)
-			if isErr {
-				haltErr, isHalt := err.(*gojq.HaltError)
-				if isHalt && haltErr.Value() == nil {
-					break
-				}
-
-				panic(fmt.Sprintf("gojq error: %q", err.Error()))
-			}
-
-			matches = append(matches, v)
-		}
-
-		if len(matches) != 1 {
-			panic(fmt.Sprintf("bad matches for query %q -> %+v", expr, matches))
-		}
-		return matches[0].(string)
-	default:
-		panic(fmt.Sprintf("unexpected expr type %s", exprType))
-	}
 }

@@ -1,14 +1,40 @@
 [
+    // The mapping file contains a list of data<->template relationships.
     {
+        // A SingleOutput rule ingests an arbitrary blob of data, and always
+        // produces a single output file, with an explicitly-specified output
+        // file name. Output file names are relative to the OutputRoot directory
         SingleOutput: index.html
-        Template: recipes_index.html
-        Selector: '.recipes[]'
+
+        // Template specifies the template file to use. The path is relative
+        // to the TemplateRoot directory. In this example, relative to
+        // example/templates/.
+        // project. The file name and extension can be anything you want.
+        Template: recipes_index.tmpl.html
+
+        // Selector specifies which data from the overall site data should
+        // be passed into this template. This can be any JQ expression, and
+        // it is evaluated against the SiteContent file to produce a
+        // subset of the total site content, which is then passed to the
+        // template. We use the jq: prefix to indicate the expression type.
+        // more expression types may be supported in the future.
+        Selector: jq:.recipes[]
     }
 
     {
+        // A PerMatchOutput rule ingests a list-structured blob of data,
+        // and produces one output file per item in the list. Each output
+        // file's name is based on the item being evaluated. Use a JQ
+        // expression to construct the string from a combination of hardcoded
+        // components and components from the ite data.
         PerMatchOutput: jq:"recipes/" + .shortname + ".html"
-        Template: recipe.html
-        Selector: '.recipes[]'
-        // Selector: '.[] | select(.tag=="testitem")'
+
+        // Template works the same as for SingleOutput. A single item from the
+        // list data blob will be passed to the template.
+        Template: recipe.tmpl.html
+
+        // For a PerMatchOutput, the Selector must evaluate to a list. 
+        Selector: jq:.recipes[]
+        // Selector: .[] | select(.tag=="testitem")
     }
 ]

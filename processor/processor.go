@@ -35,8 +35,8 @@ func Load(readFileFn func(string) ([]byte, error), configPath string) (Processor
 	config.ContentRoot = filepath.Clean(config.ContentRoot) + "/"
 	config.OutputRoot = filepath.Clean(config.OutputRoot) + "/"
 
-	if config.MappingFile == "" || filepath.Base(config.MappingFile) != config.MappingFile {
-		Errorfln("MappingFile must be a nonempty, bare filename. No directory or path separators should be included. Got %q.", config.MappingFile)
+	if config.MappingFile == "" {
+		Errorfln("MappingFile must not be empty.")
 		return nil, true
 	}
 
@@ -109,13 +109,17 @@ func (p *processor) LoadSiteContent() (any, bool) {
 	Printfln("\nLOADING SITE CONTENT...")
 
 	hasError := false
-	contentRootToml := filepath.Join(p.siteRoot, p.config.ContentRoot, p.config.SiteDataFile)
-	siteData, errors := EvalContentFile(p.loader, contentRootToml)
+	contentRootToml := filepath.Join(
+		p.siteRoot,
+		p.config.ContentRoot,
+		p.config.SiteContentFile,
+	)
+	siteContent, errors := EvalContentFile(p.loader, contentRootToml)
 	if len(errors) > 0 {
 		return nil, false
 	}
 
-	return siteData, hasError
+	return siteContent, hasError
 }
 
 func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
@@ -195,7 +199,8 @@ func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingFo
 		panic(fmt.Sprintf("error: template %q not found", templateName))
 	}
 
-	itemMatches := FilterBySelector(mapping.Selector, siteContent)
+	itemMatches := EvalContentExpr(mapping.Selector, siteContent)
+	Printfln("SELECTOR %q found %d matches", mapping.Selector, len(itemMatches))
 
 	hasError := false
 
