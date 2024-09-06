@@ -5,12 +5,12 @@
     </head>
     <body>
         <h1>{{ .title }}</h1>
-        <div>{{ RenderMarkdown .instructions }}</div>
-        <!--
-        TODO(treaster): Include example of how to use a data URL
+        <h2>Instructions</h2>
+        <div>{{ RenderMarkdown(.instructions) }}</div>
+        <h2>Notes</h2>
         <div>
-            <img src="{{ DataUrl "image/png" .thumbnail }}">
+            This is image is a data url, so the image bytes are embedded directly into the page.
         </div>
-        -->
+        <img src="{{ DataUrl("image/png", .thumbnail) }}">
     </body>
 </html>

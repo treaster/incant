@@ -7,11 +7,6 @@ import (
 	"text/template"
 )
 
-type TemplateMgr interface {
-	ParseOne(tmplName string, tmplBody []byte) error
-	Execute(tmplName string, tmplData any, output io.Writer) error
-}
-
 func GoTemplateMgr(dataUrlRoot string) TemplateMgr {
 	tmpl := template.
 		New("incant").

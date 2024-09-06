@@ -5,8 +5,8 @@
     </head>
     <body>
         <h1>Recipe Book</h1>
-        {{ range $match := .}}
-        <div><a href="/recipes/{{ .shortname }}.html">{{ $match.title }}</a></div>
+        {{ range _, match := .}}
+        <div><a href="/recipes/{{ match.shortname }}.html">{{ match.title }}</a></div>
         {{ end }}
     </body>
 </html>

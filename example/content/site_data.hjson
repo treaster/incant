@@ -6,11 +6,11 @@
             tag: dessert
             instructions:
                 '''
-                1. This is *Markdown* so we can **format** it how we like with ~~no extra HTML~~.
+                1. This numbered list is *Markdown* so we can **format** it how we like with ~~no extra HTML~~.
                 2. Buy a dessert.
                 3. If the dessert contains fruit, return the dessert and buy one that replaces the fruit with chocolate.
                 '''
-            thumbnail: assets/bitlobber.png
+            thumbnail: assets/chocolate-chocolate-chocolate-240.png
         }
     
         {
@@ -23,13 +23,13 @@
                 2. Add sauce.
                 3. Nom.
                 '''
-            thumbnail: assets/bitlobber.png
+            thumbnail: assets/spaghetti-saucy-sauce-240.png
         }
     ]
 
     fun_links: [
         {
-            anchor: https://treaster.net
+            anchor: https://bleatentooten.com
             label: A cool web site
         }
         {

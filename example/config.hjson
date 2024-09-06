@@ -25,7 +25,7 @@
     // TemplatesType indicates the template processor to use.
     // - "go/template" indicates the templates/text package that ships with
     //   the Go standard library.
-    TemplatesType: "go/template"
+    TemplatesType: "jet"
 
     // Files in StaticRoot are copied wholesale into the OutputRoot directory,
     // under a subdirectory with the same name. In this example, the files

@@ -15,6 +15,7 @@ func main() {
 
 	templateMgrFactories := map[string]func(string) processor.TemplateMgr{
 		"go/template": processor.GoTemplateMgr,
+		"jet":         processor.JetTemplateMgr,
 	}
 
 	proc, hasErrors := processor.Load(os.ReadFile, configPath, templateMgrFactories)

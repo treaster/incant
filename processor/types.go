@@ -1,5 +1,7 @@
 package processor
 
+import "io"
+
 type Config struct {
 	ContentRoot     string `yaml:"ContentRoot"`
 	SiteContentFile string `yaml:"SiteContentFile"`
@@ -33,4 +35,9 @@ type Processor interface {
 	ClearExistingOutput() bool
 	ProcessContent([]MappingForTemplate, any) bool
 	CopyStatic() bool
+}
+
+type TemplateMgr interface {
+	ParseOne(tmplName string, tmplBody []byte) error
+	Execute(tmplName string, tmplData any, output io.Writer) error
 }
