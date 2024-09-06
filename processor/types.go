@@ -1,13 +1,12 @@
 package processor
 
-import "text/template"
-
 type Config struct {
 	ContentRoot     string `yaml:"ContentRoot"`
 	SiteContentFile string `yaml:"SiteContentFile"`
 	MappingFile     string `yaml:"MappingFile"`
 	StaticRoot      string `yaml:"StaticRoot"`
 	TemplatesRoot   string `yaml:"TemplatesRoot"`
+	TemplatesType   string `yaml:"TemplatesType"`
 	OutputRoot      string `yaml:"OutputRoot"`
 }
 
@@ -28,10 +27,10 @@ type MappingForTemplate struct {
 }
 
 type Processor interface {
-	LoadTemplates() (*template.Template, bool)
+	LoadTemplates() bool
 	LoadSiteContent() (any, bool)
 	LoadMappings() ([]MappingForTemplate, bool)
 	ClearExistingOutput() bool
-	ProcessContent(*template.Template, []MappingForTemplate, any) bool
+	ProcessContent([]MappingForTemplate, any) bool
 	CopyStatic() bool
 }

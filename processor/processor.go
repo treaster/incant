@@ -2,20 +2,24 @@ package processor
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
-	"text/template"
 )
 
 type processor struct {
-	loader     FileLoader
-	configPath string
-	siteRoot   string
-	config     Config
+	loader      FileLoader
+	configPath  string
+	siteRoot    string
+	config      Config
+	templateMgr TemplateMgr
 }
 
-func Load(readFileFn func(string) ([]byte, error), configPath string) (Processor, bool) {
+func Load(
+	readFileFn func(string) ([]byte, error),
+	configPath string,
+	templateMgrFactories map[string]func(string) TemplateMgr,
+) (Processor, bool) {
+
 	Printfln("\nLOADING CONFIG FILE...")
 
 	if configPath == "" {
@@ -41,43 +45,44 @@ func Load(readFileFn func(string) ([]byte, error), configPath string) (Processor
 	}
 
 	siteRoot := filepath.Dir(configPath) + "/"
+
+	if config.TemplatesType == "" {
+		Errorfln("TemplatesType must not be empty.")
+		return nil, true
+	}
+	templateMgrFactory, hasType := templateMgrFactories[config.TemplatesType]
+	if !hasType {
+		Errorfln("Unrecognized TemplatesType %q.", config.TemplatesType)
+		return nil, true
+	}
+
+	// TODO(treaster): Consider if data URLs should pull assets relative to
+	// siteRoot, or contentRoot? SiteRoot for now I guess.
+	templateMgr := templateMgrFactory(siteRoot)
+
 	return &processor{
 		loader,
 		configPath,
 		siteRoot,
 		config,
+		templateMgr,
 	}, false
 }
 
-func (p *processor) LoadTemplates() (*template.Template, bool) {
+func (p *processor) LoadTemplates() bool {
 	Printfln("\nLOADING TEMPLATES...")
-
-	tmpl := template.
-		New("incant").
-		Funcs(template.FuncMap{
-			"RenderMarkdown": RenderMarkdown,
-			"DataUrl": func(assetType string, assetPath string) string {
-				fullPath := filepath.Join(p.siteRoot, assetPath)
-				return DataUrl(assetType, fullPath)
-			},
-			"Add":       func(a int, b int) int { return a + b },
-			"Sub":       func(a int, b int) int { return a - b },
-			"Mult":      func(a int, b int) int { return a * b },
-			"Div":       func(a int, b int) int { return a / b },
-			"NowLocal":  NowLocal,
-			"NowUTC":    NowUTC,
-			"NamedArgs": NamedArgs,
-		}).
-		Option("missingkey=error")
 
 	templates := FindFiles(filepath.Join(p.siteRoot, p.config.TemplatesRoot))
 	if len(templates) == 0 {
-		return nil, Errorfln("no templates found in templates root %q", p.config.TemplatesRoot)
+		return Errorfln("no templates found in templates root %q", p.config.TemplatesRoot)
 	}
 
 	var templateNames []string
 	hasError := false
 	for _, oneTmpl := range templates {
+		tmplName := SafeCutPrefix(oneTmpl, filepath.Join(p.siteRoot, p.config.TemplatesRoot)+"/")
+		templateNames = append(templateNames, tmplName)
+
 		tmplContents, err := os.ReadFile(oneTmpl)
 		if err != nil {
 			newError := Errorfln("error reading template %q: %s", oneTmpl, err.Error())
@@ -85,15 +90,11 @@ func (p *processor) LoadTemplates() (*template.Template, bool) {
 			continue
 		}
 
-		tmplName := SafeCutPrefix(oneTmpl, filepath.Join(p.siteRoot, p.config.TemplatesRoot)+"/")
-		_, err = tmpl.New(tmplName).Parse(string(tmplContents))
+		err = p.templateMgr.ParseOne(tmplName, tmplContents)
 		if err != nil {
 			newError := Errorfln("error parsing template %q: %s", oneTmpl, err.Error())
 			hasError = hasError || newError
-			continue
 		}
-
-		templateNames = append(templateNames, tmplName)
 	}
 
 	Printfln("Loaded templates:")
@@ -102,7 +103,7 @@ func (p *processor) LoadTemplates() (*template.Template, bool) {
 	}
 	Printfln("")
 
-	return tmpl, hasError
+	return hasError
 }
 
 func (p *processor) LoadSiteContent() (any, bool) {
@@ -175,28 +176,23 @@ func (p *processor) ClearExistingOutput() bool {
 	return false
 }
 
-func (p *processor) ProcessContent(tmpl *template.Template, allMappings []MappingForTemplate, siteContent any) bool {
+func (p *processor) ProcessContent(allMappings []MappingForTemplate, siteContent any) bool {
 	Printfln("\nEXECUTING CONTENT + TEMPLATES...")
 
 	hasError := false
 	for _, mapping := range allMappings {
 		Printfln("    processOneMapping")
-		newError := p.processOneMapping(tmpl, mapping, siteContent)
+		newError := p.processOneMapping(mapping, siteContent)
 		hasError = hasError || newError
 	}
 	return hasError
 }
 
-func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingForTemplate, siteContent any) bool {
+func (p *processor) processOneMapping(mapping MappingForTemplate, siteContent any) bool {
 	templateName := mapping.Template
 	if templateName == "" {
 		Errorfln("mapping file must contain key 'config.template', which defines which template file should be used.")
 		return true
-	}
-
-	oneTmpl := tmpl.Lookup(templateName)
-	if oneTmpl == nil {
-		panic(fmt.Sprintf("error: template %q not found", templateName))
 	}
 
 	itemMatches := EvalContentExpr(mapping.Selector, siteContent)
@@ -205,13 +201,13 @@ func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingFo
 	hasError := false
 
 	if mapping.SingleOutput != "" {
-		newError := p.executeOneTemplate(oneTmpl, itemMatches, mapping.SingleOutput)
+		newError := p.executeOneTemplate(templateName, itemMatches, mapping.SingleOutput)
 		hasError = hasError || newError
 	}
 	if mapping.PerMatchOutput != "" {
 		for _, item := range itemMatches {
 			itemName := EvalOutputBase(mapping.PerMatchOutput, item)
-			newError := p.executeOneTemplate(oneTmpl, item, itemName)
+			newError := p.executeOneTemplate(templateName, item, itemName)
 			hasError = hasError || newError
 		}
 	}
@@ -219,11 +215,11 @@ func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingFo
 	return hasError
 }
 
-func (p *processor) executeOneTemplate(tmpl *template.Template, tmplData any, outputRelPath string) bool {
-	Printfln("Execute template %s", tmpl.Name())
+func (p *processor) executeOneTemplate(tmplName string, tmplData any, outputRelPath string) bool {
+	Printfln("Execute template %s", tmplName)
 
 	var output bytes.Buffer
-	err := tmpl.Execute(&output, tmplData)
+	err := p.templateMgr.Execute(tmplName, tmplData, &output)
 	if err != nil {
 		return Errorfln("error executing template: %s", err.Error())
 	}

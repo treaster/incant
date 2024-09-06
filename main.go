@@ -13,13 +13,17 @@ func main() {
 
 	flag.Parse()
 
-	proc, hasErrors := processor.Load(os.ReadFile, configPath)
+	templateMgrFactories := map[string]func(string) processor.TemplateMgr{
+		"go/template": processor.GoTemplateMgr,
+	}
+
+	proc, hasErrors := processor.Load(os.ReadFile, configPath, templateMgrFactories)
 	if hasErrors {
 		processor.Printfln("ERROR loading config")
 		os.Exit(1)
 	}
 
-	tmpl, hasError := proc.LoadTemplates()
+	hasError := proc.LoadTemplates()
 	if hasError {
 		processor.Printfln("ERROR loading template files")
 		os.Exit(1)
@@ -51,7 +55,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	hasErrors = proc.ProcessContent(tmpl, allMappings, siteContent)
+	hasErrors = proc.ProcessContent(allMappings, siteContent)
 	if hasErrors {
 		processor.Printfln("ERROR processing mapping + site content")
 		os.Exit(1)
