@@ -7,11 +7,13 @@ import (
 )
 
 type processor struct {
-	loader      FileLoader
-	configPath  string
-	siteRoot    string
-	config      Config
-	templateMgr TemplateMgr
+	siteRoot        string
+	config          Config
+	contentLoader   FileLoader
+	templatesLoader FileLoader
+	mappingLoader   FileLoader
+	staticLoader    FileLoader
+	templateMgr     TemplateMgr
 }
 
 func Load(
@@ -26,17 +28,16 @@ func Load(
 		return nil, Errorfln("--config must be defined")
 	}
 
-	loader := MakeFileLoader(readFileFn)
+	configLoader := MakeFileLoader(".", ".", readFileFn)
 
 	var config Config
-	err := loader.LoadFile(configPath, &config)
+	err := configLoader.LoadFile(configPath, &config)
 	if err != nil {
 		return nil, Errorfln("error decoding config file: %s", err.Error())
 	}
 
-	config.StaticRoot = filepath.Clean(config.StaticRoot) + "/"
-	config.TemplatesRoot = filepath.Clean(config.TemplatesRoot) + "/"
-	config.ContentRoot = filepath.Clean(config.ContentRoot) + "/"
+	// Clean the config
+	config.StaticRoot = filepath.Clean(config.StaticRoot)
 	config.OutputRoot = filepath.Clean(config.OutputRoot) + "/"
 
 	if config.MappingFile == "" {
@@ -60,11 +61,31 @@ func Load(
 	// siteRoot, or contentRoot? SiteRoot for now I guess.
 	templateMgr := templateMgrFactory(siteRoot)
 
+	contentLoader := MakeFileLoader(
+		siteRoot,
+		config.ContentRoot,
+		readFileFn,
+	)
+
+	templatesLoader := MakeFileLoader(
+		siteRoot,
+		config.TemplatesRoot,
+		readFileFn,
+	)
+
+	staticLoader := MakeFileLoader(
+		siteRoot,
+		config.StaticRoot,
+		readFileFn,
+	)
+
 	return &processor{
-		loader,
-		configPath,
 		siteRoot,
 		config,
+		contentLoader,
+		templatesLoader,
+		contentLoader, // contentLoader also works as mappingLoader
+		staticLoader,
 		templateMgr,
 	}, false
 }
@@ -72,27 +93,23 @@ func Load(
 func (p *processor) LoadTemplates() bool {
 	Printfln("\nLOADING TEMPLATES...")
 
-	templates := FindFiles(filepath.Join(p.siteRoot, p.config.TemplatesRoot))
-	if len(templates) == 0 {
-		return Errorfln("no templates found in templates root %q", p.config.TemplatesRoot)
+	templateNames := p.templatesLoader.FindFiles()
+	if len(templateNames) == 0 {
+		return Errorfln("no templates found in templates root %q", p.templatesLoader.BaseDir())
 	}
 
-	var templateNames []string
 	hasError := false
-	for _, oneTmpl := range templates {
-		tmplName := SafeCutPrefix(oneTmpl, filepath.Join(p.siteRoot, p.config.TemplatesRoot)+"/")
-		templateNames = append(templateNames, tmplName)
-
-		tmplContents, err := os.ReadFile(oneTmpl)
+	for _, templateName := range templateNames {
+		tmplContents, err := p.templatesLoader.LoadFileAsBytes(templateName)
 		if err != nil {
-			newError := Errorfln("error reading template %q: %s", oneTmpl, err.Error())
+			newError := Errorfln("error reading template %q: %s", templateName, err.Error())
 			hasError = hasError || newError
 			continue
 		}
 
-		err = p.templateMgr.ParseOne(tmplName, tmplContents)
+		err = p.templateMgr.ParseOne(templateName, tmplContents)
 		if err != nil {
-			newError := Errorfln("error parsing template %q: %s", oneTmpl, err.Error())
+			newError := Errorfln("error parsing template %q: %s", templateName, err.Error())
 			hasError = hasError || newError
 		}
 	}
@@ -110,12 +127,7 @@ func (p *processor) LoadSiteContent() (any, bool) {
 	Printfln("\nLOADING SITE CONTENT...")
 
 	hasError := false
-	contentRootToml := filepath.Join(
-		p.siteRoot,
-		p.config.ContentRoot,
-		p.config.SiteContentFile,
-	)
-	siteContent, errors := EvalContentFile(p.loader, contentRootToml)
+	siteContent, errors := EvalContentFile(p.contentLoader, p.config.SiteContentFile)
 	if len(errors) > 0 {
 		return nil, false
 	}
@@ -127,13 +139,13 @@ func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
 	Printfln("\nLOADING MAPPING FILES...")
 
 	hasError := false
-	mappingPaths := FindFilesWithName(filepath.Join(p.siteRoot, p.config.ContentRoot), p.config.MappingFile)
+	mappingPaths := p.mappingLoader.FindFilesWithName(p.config.MappingFile)
 
 	var allMappings []MappingForTemplate
 	for _, mappingPath := range mappingPaths {
 		Printfln("  mapping path %s", mappingPath)
 		var rawMappings []RawMapping
-		err := p.loader.LoadFile(mappingPath, &rawMappings)
+		err := p.mappingLoader.LoadFile(mappingPath, &rawMappings)
 		if err != nil {
 			hasError = Errorfln("error loading mapping file %s: %s", mappingPath, err.Error())
 			continue
@@ -245,13 +257,10 @@ func (p *processor) CopyStatic() bool {
 
 	hasError := false
 
-	prefix := filepath.Join(p.siteRoot, p.config.StaticRoot)
-	staticFiles := FindFiles(prefix)
+	staticFiles := p.staticLoader.FindFiles()
 	Printfln("copying %d static files", len(staticFiles))
 	for _, staticFile := range staticFiles {
-		partialPath := SafeCutPrefix(staticFile, prefix)
-
-		outPath := filepath.Join(p.siteRoot, p.config.OutputRoot, p.config.StaticRoot, partialPath)
+		outPath := filepath.Join(p.siteRoot, p.config.OutputRoot, p.config.StaticRoot, staticFile)
 		outDir := filepath.Dir(outPath)
 		err := os.MkdirAll(outDir, 0755)
 		if err != nil {
@@ -261,7 +270,7 @@ func (p *processor) CopyStatic() bool {
 		}
 
 		Printfln("    copy %s to %s", staticFile, outPath)
-		err = Copy(staticFile, outPath)
+		err = p.staticLoader.Copy(staticFile, outPath)
 		if err != nil {
 			Printfln("error copying file %s to %s: %s", staticFile, outPath, err.Error())
 			hasError = true
