@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/CloudyKit/jet/v6"
@@ -39,22 +38,13 @@ func JetTemplateMgr(dataUrlRoot string) TemplateMgr {
 		loader,
 		jet.WithSafeWriter(nil),
 	).
-		AddGlobalFunc("RenderMarkdown", func(a jet.Arguments) reflect.Value {
-			a.RequireNumOfArguments("RenderMarkdown", 1, 1)
-			input := a.Get(0).String()
-			value, err := RenderMarkdown(input)
-			if err != nil {
-				panic(fmt.Sprintf("error rendering markdown: %s", err.Error()))
-			}
-			return reflect.ValueOf(value)
-		}).
-		AddGlobalFunc("DataUrl", func(a jet.Arguments) reflect.Value {
-			a.RequireNumOfArguments("DataUrl", 2, 2)
-			assetType := a.Get(0).String()
-			assetPath := a.Get(1).String()
+		AddGlobal("RenderMarkdown", RenderMarkdown).
+		AddGlobal("DataUrl", func(assetType string, assetPath string) string {
 			fullPath := filepath.Join(dataUrlRoot, assetPath)
-			return reflect.ValueOf(DataUrl(assetType, fullPath))
-		})
+			return DataUrl(assetType, fullPath)
+		}).
+		AddGlobal("NowLocal", NowLocal).
+		AddGlobal("NowUTC", NowUTC)
 
 	return &jetTemplateMgr{
 		loader,
