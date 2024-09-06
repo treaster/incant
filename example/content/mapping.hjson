@@ -1,12 +1,12 @@
 [
     {
-        SingleOutput: index
+        SingleOutput: index.html
         Template: recipes_index.html
         Selector: '.recipes[]'
     }
 
     {
-        PerMatchOutput: jq:"recipes/" + .shortname
+        PerMatchOutput: jq:"recipes/" + .shortname + ".html"
         Template: recipe.html
         Selector: '.recipes[]'
         // Selector: '.[] | select(.tag=="testitem")'

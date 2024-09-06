@@ -21,7 +21,6 @@ type RawMapping struct {
 }
 
 type MappingForTemplate struct {
-	MappingPath    string
 	SingleOutput   string
 	PerMatchOutput string
 	Template       string

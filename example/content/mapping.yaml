@@ -1,7 +1,7 @@
-- SingleOutput: "index"
+- SingleOutput: "index.html"
   Template: "index.html"
   Selector: '.[] | select(.tag=="testitem")'
 
-- PerMatchOutput: "jq:.title"
+- PerMatchOutput: "jq:.title + '.html'"
   Template: "item.html"
   Selector: '.[] | select(.tag=="testitem")'

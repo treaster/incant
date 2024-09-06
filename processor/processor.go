@@ -136,9 +136,6 @@ func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
 
 		Printfln("found mappings %+v", rawMappings)
 
-		cleanPath := SafeCutPrefix(mappingPath, filepath.Join(p.siteRoot, p.config.ContentRoot))
-		cleanPath, _ = TrimExt(cleanPath)
-
 		for i, rawMapping := range rawMappings {
 			Printfln("    found mapping for types %+v onto template %q", rawMapping.Selector, rawMapping.Template)
 
@@ -151,7 +148,6 @@ func (p *processor) LoadMappings() ([]MappingForTemplate, bool) {
 			}
 
 			forTemplate := MappingForTemplate{
-				cleanPath,
 				rawMapping.SingleOutput,
 				rawMapping.PerMatchOutput,
 				rawMapping.Template,
@@ -218,7 +214,7 @@ func (p *processor) processOneMapping(tmpl *template.Template, mapping MappingFo
 	return hasError
 }
 
-func (p *processor) executeOneTemplate(tmpl *template.Template, tmplData any, outputBase string) bool {
+func (p *processor) executeOneTemplate(tmpl *template.Template, tmplData any, outputRelPath string) bool {
 	Printfln("Execute template %s", tmpl.Name())
 
 	var output bytes.Buffer
@@ -227,9 +223,7 @@ func (p *processor) executeOneTemplate(tmpl *template.Template, tmplData any, ou
 		return Errorfln("error executing template: %s", err.Error())
 	}
 
-	tmplExt := filepath.Ext(tmpl.Name())
-
-	outputPath := filepath.Join(p.siteRoot, p.config.OutputRoot, outputBase+tmplExt)
+	outputPath := filepath.Join(p.siteRoot, p.config.OutputRoot, outputRelPath)
 	outputDir := filepath.Dir(outputPath)
 	err = os.MkdirAll(outputDir, 0755)
 	if err != nil {
