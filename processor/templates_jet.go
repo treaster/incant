@@ -44,7 +44,10 @@ func JetTemplateMgr(dataUrlRoot string) TemplateMgr {
 			return DataUrl(assetType, fullPath)
 		}).
 		AddGlobal("NowLocal", NowLocal).
-		AddGlobal("NowUTC", NowUTC)
+		AddGlobal("NowUTC", NowUTC).
+		AddGlobal("Sprintf", func(format string, a ...any) string {
+			return fmt.Sprintf(format, a...)
+		})
 
 	return &jetTemplateMgr{
 		loader,
