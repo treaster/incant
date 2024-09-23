@@ -10,12 +10,19 @@ import (
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/renderer/html"
 )
 
 func RenderMarkdown(input string) (string, error) {
 	md := goldmark.New(
-		// Enables table, strikethrough, linkify, and tasklist markdown features.
-		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithExtensions(
+			// Enables table, strikethrough, linkify, and tasklist markdown features.
+			extension.GFM,
+		),
+		goldmark.WithRendererOptions(
+			// Enables inline HTML in markdown content.
+			html.WithUnsafe(),
+		),
 	)
 
 	var buf bytes.Buffer
