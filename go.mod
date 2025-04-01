@@ -8,6 +8,7 @@ require (
 	github.com/hjson/hjson-go/v4 v4.4.0
 	github.com/itchyny/gojq v0.12.16
 	github.com/stretchr/testify v1.9.0
+	github.com/tenkoh/goldmark-img64 v0.1.2
 	github.com/treaster/gotl v0.0.0-20240811221757-5b9ea6114398
 	github.com/yuin/goldmark v1.7.2
 	gopkg.in/yaml.v3 v3.0.1
@@ -16,8 +17,10 @@ require (
 require (
 	github.com/CloudyKit/fastprinter v0.0.0-20200109182630-33d98a066a53 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	golang.org/x/net v0.8.0 // indirect
 )
 
 // replace github.com/treaster/shire => ../shire

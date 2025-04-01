@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	img64 "github.com/tenkoh/goldmark-img64"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer/html"
@@ -18,6 +19,9 @@ func RenderMarkdown(input string) (string, error) {
 		goldmark.WithExtensions(
 			// Enables table, strikethrough, linkify, and tasklist markdown features.
 			extension.GFM,
+
+			// Enables data urls
+			img64.Img64,
 		),
 		goldmark.WithRendererOptions(
 			// Enables inline HTML in markdown content.
