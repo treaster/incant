@@ -11,6 +11,9 @@ import (
 )
 
 func MakeFileLoader(siteRoot string, relativeDir string, readFileFn func(string) ([]byte, error)) FileLoader {
+	// TODO(treaster): Wrap up filepath munging into the readFileFn. In the
+	// current implementation, the tests in content_file_test.go are a little
+	// weird in the way they take empty strings as the filepath args.
 	baseDir := filepath.Clean(filepath.Join(siteRoot, relativeDir)) + "/"
 	return FileLoader{
 		baseDir:    baseDir,

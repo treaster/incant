@@ -12,6 +12,8 @@ import (
 
 func makeFileLoader(data map[string]string) processor.FileLoader {
 	return processor.MakeFileLoader(
+		"",
+		"",
 		func(filename string) ([]byte, error) {
 			s, hasFile := data[filename]
 			if !hasFile {
