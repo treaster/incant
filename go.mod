@@ -1,16 +1,16 @@
 module github.com/treaster/incant
 
-go 1.21.1
+go 1.24.3
 
 require (
-	github.com/BurntSushi/toml v1.4.0
-	github.com/CloudyKit/jet/v6 v6.2.0
-	github.com/hjson/hjson-go/v4 v4.4.0
-	github.com/itchyny/gojq v0.12.16
-	github.com/stretchr/testify v1.9.0
+	github.com/BurntSushi/toml v1.5.0
+	github.com/CloudyKit/jet/v6 v6.3.1
+	github.com/hjson/hjson-go/v4 v4.5.0
+	github.com/itchyny/gojq v0.12.17
+	github.com/stretchr/testify v1.10.0
 	github.com/tenkoh/goldmark-img64 v0.1.2
-	github.com/treaster/gotl v0.0.0-20240811221757-5b9ea6114398
-	github.com/yuin/goldmark v1.7.2
+	github.com/treaster/gotl v0.0.0-20250120022610-54538b8e399f
+	github.com/yuin/goldmark v1.7.12
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -11,7 +11,7 @@ import (
 type context struct {
 	loader FileLoader
 
-	inProgress *gotl.Set[string]
+	inProgress gotl.Set[string]
 	allResults map[string]any
 	stack      []string
 	errors     []error
