@@ -20,7 +20,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 )
 
 // replace github.com/treaster/shire => ../shire
