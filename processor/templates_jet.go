@@ -10,14 +10,9 @@ import (
 	"github.com/CloudyKit/jet/v6"
 )
 
-type customLoader map[string][]byte
+type jetCustomLoader map[string][]byte
 
-func (cl customLoader) Add(name string, contents []byte) {
-	name = strings.TrimPrefix(name, "/")
-	cl[name] = contents
-}
-
-func (cl customLoader) Open(name string) (io.ReadCloser, error) {
+func (cl jetCustomLoader) Open(name string) (io.ReadCloser, error) {
 	name = strings.TrimPrefix(name, "/")
 	contents, hasName := cl[name]
 	if !hasName {
@@ -26,14 +21,19 @@ func (cl customLoader) Open(name string) (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewBuffer(contents)), nil
 }
 
-func (cl customLoader) Exists(name string) bool {
+func (cl jetCustomLoader) Exists(name string) bool {
 	name = strings.TrimPrefix(name, "/")
 	_, hasName := cl[name]
 	return hasName
 }
 
+func (cl jetCustomLoader) add(name string, contents []byte) {
+	name = strings.TrimPrefix(name, "/")
+	cl[name] = contents
+}
+
 func JetTemplateMgr(dataUrlRoot string) TemplateMgr {
-	loader := customLoader{}
+	loader := jetCustomLoader{}
 	set := jet.NewSet(
 		loader,
 		jet.WithSafeWriter(nil),
@@ -56,12 +56,12 @@ func JetTemplateMgr(dataUrlRoot string) TemplateMgr {
 }
 
 type jetTemplateMgr struct {
-	loader customLoader
+	loader jetCustomLoader
 	set    *jet.Set
 }
 
 func (tm *jetTemplateMgr) ParseOne(tmplName string, tmplBody []byte) error {
-	tm.loader.Add(tmplName, tmplBody)
+	tm.loader.add(tmplName, tmplBody)
 	return nil
 }
 

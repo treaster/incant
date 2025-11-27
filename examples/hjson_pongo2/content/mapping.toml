@@ -1,0 +1,9 @@
+[[mapping]]
+single_output = "index.html"
+template = "index.html"
+selector = '.[] | select(.tag=="projects_index")'
+
+[[mapping]]
+per_match_output = "jq:.title + '.html'"
+template = "item.html"
+selector = '.[] | select(.tag=="testitem")'

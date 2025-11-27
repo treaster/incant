@@ -1,0 +1,16 @@
+<html>
+    <head>
+        <title>{{ data.title }}</title>
+        <link rel="stylesheet" type="text/css" href="/static/main.css" />
+    </head>
+    <body>
+        <h1>{{ data.title }}</h1>
+        <h2>Instructions</h2>
+        <div>{{ RenderMarkdown(data.instructions) }}</div>
+        <h2>Notes</h2>
+        <div>
+            This is image is a data url, so the image bytes are embedded directly into the page.
+        </div>
+        <img src="{{ DataUrl("image/png", data.thumbnail) }}">
+    </body>
+</html>
