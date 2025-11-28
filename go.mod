@@ -5,7 +5,7 @@ go 1.24.3
 require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/CloudyKit/jet/v6 v6.3.1
-	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
+	github.com/flosch/pongo2/v6 v6.0.0
 	github.com/hjson/hjson-go/v4 v4.5.0
 	github.com/itchyny/gojq v0.12.17
 	github.com/stretchr/testify v1.11.1
