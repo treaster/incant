@@ -38,10 +38,7 @@ func PongoTemplateMgr(dataUrlRoot string) TemplateMgr {
 	pongo2.SetAutoescape(false)
 
 	loader := pongoCustomLoader{}
-	set := pongo2.NewSet(
-		"incant",
-		loader,
-	)
+	set := pongo2.NewSet("incant", loader)
 
 	set.Globals = pongo2.Context{
 		"RenderMarkdown": RenderMarkdown,
