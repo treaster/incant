@@ -39,7 +39,7 @@ func PongoTemplateMgr(dataUrlRoot string) TemplateMgr {
 
 	loader := pongoCustomLoader{}
 	set := pongo2.NewSet(
-		"templates",
+		"incant",
 		loader,
 	)
 
