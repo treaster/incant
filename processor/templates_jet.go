@@ -45,6 +45,7 @@ func JetTemplateMgr(dataUrlRoot string) TemplateMgr {
 		}).
 		AddGlobal("NowLocal", NowLocal).
 		AddGlobal("NowUTC", NowUTC).
+		AddGlobal("Reverse", Reverse).
 		AddGlobal("Sprintf", func(format string, a ...any) string {
 			return fmt.Sprintf(format, a...)
 		})

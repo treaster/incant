@@ -48,6 +48,7 @@ func PongoTemplateMgr(dataUrlRoot string) TemplateMgr {
 		},
 		"NowLocal": NowLocal,
 		"NowUTC":   NowUTC,
+		"Reverse":  Reverse,
 		"Sprintf": func(format string, a ...any) string {
 			return fmt.Sprintf(format, a...)
 		},

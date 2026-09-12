@@ -23,6 +23,7 @@ func GoTemplateMgr(dataUrlRoot string) TemplateMgr {
 			"NowLocal":  NowLocal,
 			"NowUTC":    NowUTC,
 			"NamedArgs": NamedArgs,
+			"Reverse":   Reverse,
 		}).
 		Option("missingkey=error")
 

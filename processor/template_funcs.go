@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	img64 "github.com/tenkoh/goldmark-img64"
@@ -101,4 +102,10 @@ func NamedArgs(values ...interface{}) (map[string]interface{}, error) {
 		dict[key] = values[i+1]
 	}
 	return dict, nil
+}
+
+func Reverse(values []interface{}) ([]interface{}, error) {
+	values = slices.Clone(values)
+	slices.Reverse(values)
+	return values, nil
 }
