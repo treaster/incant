@@ -1,6 +1,6 @@
 module github.com/treaster/incant
 
-go 1.24.3
+go 1.27.1
 
 require (
 	github.com/BurntSushi/toml v1.5.0
@@ -21,7 +21,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/net v0.59.0 // indirect
 )
 
 // replace github.com/treaster/shire => ../shire
