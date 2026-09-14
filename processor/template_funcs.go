@@ -21,6 +21,9 @@ func RenderMarkdown(input string) (string, error) {
 			// Enables table, strikethrough, linkify, and tasklist markdown features.
 			extension.GFM,
 
+			// Enable "[^1]" or "[^foo]" syntax for footnotes.
+			extension.Footnote,
+
 			// Enables data urls
 			img64.Img64,
 		),
